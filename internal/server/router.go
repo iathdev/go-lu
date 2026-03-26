@@ -5,6 +5,7 @@ import (
 	"learning-go/internal/infrastructure/config"
 	"learning-go/internal/shared/middleware"
 	"learning-go/internal/shared/response"
+	"learning-go/internal/vocabulary"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -15,6 +16,7 @@ import (
 
 func NewRouter(
 	authModule *auth.Module,
+	vocabularyModule *vocabulary.Module,
 	db *gorm.DB,
 	redisClient *redis.Client,
 	cfg *config.Config,
@@ -57,6 +59,7 @@ func NewRouter(
 
 	// Register modules
 	authModule.RegisterRoutes(public, v1)
+	vocabularyModule.RegisterRoutes(public, v1)
 
 	r.NoRoute(func(c *gin.Context) {
 		response.NotFound(c, "common.route_not_found")

@@ -1,0 +1,10 @@
+paddlepaddle
+paddleocr
+fastapi
+uvicorn[standard]
+pydantic
+jieba
+pypinyin
+urllib3<2
+pytesseract
+Pillow
