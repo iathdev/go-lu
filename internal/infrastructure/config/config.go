@@ -14,6 +14,7 @@ type Config struct {
 	RedisConfig          `mapstructure:",squash"`
 	RateLimitConfig      `mapstructure:",squash"`
 	AuthConfig           `mapstructure:",squash"`
+	OCRConfig            `mapstructure:",squash"`
 }
 
 func LoadConfig() (*Config, error) {
