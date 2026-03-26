@@ -9,7 +9,7 @@ const (
 )
 
 type AuthConfig struct {
-	PrepAPIDomain string        `mapstructure:"PREP_API_DOMAIN"`
+	PrepAPIGatewayDomain string        `mapstructure:"PREP_API_GATEWAY_DOMAIN"`
 	PrepAuthTokenEndpoint string        `mapstructure:"PREP_AUTH_TOKEN_ENDPOINT"`
 	PrepMeEndpoint        string        `mapstructure:"PREP_ME_ENDPOINT"`
 	PrepHTTPClientTimeout time.Duration `mapstructure:"PREP_HTTP_CLIENT_TIMEOUT"`

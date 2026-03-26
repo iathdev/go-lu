@@ -113,7 +113,7 @@ sequenceDiagram
 
 > Nếu Prep Auth Token API không trả được `return_url` (down, timeout...), response 401 sẽ không có `data` → mobile tự redirect về màn login mặc định.
 >
-> Cả hai endpoint Prep (`/auth/api/v1.1/auth/me` và `/api/v1.1/auth/token`) đều dùng chung `PREP_API_DOMAIN`.
+> Cả hai endpoint Prep (`/auth/api/v1.1/auth/me` và `/api/v1.1/auth/token`) đều dùng chung `PREP_API_GATEWAY_DOMAIN`.
 
 ---
 
@@ -122,7 +122,7 @@ sequenceDiagram
 Mọi request tới `/api/*` đều đi qua `AuthMiddleware`, thực hiện:
 
 1. Parse `Authorization: Bearer <prep_token>` header
-2. Gọi `PrepUserService.ValidateToken()` — check Redis cache → miss thì gọi Prep `{PREP_API_DOMAIN}/auth/api/v1.1/auth/me` (qua circuit breaker)
+2. Gọi `PrepUserService.ValidateToken()` — check Redis cache → miss thì gọi Prep `{PREP_API_GATEWAY_DOMAIN}/auth/api/v1.1/auth/me` (qua circuit breaker)
 3. Gọi `AuthUseCase.UpsertFromPrepUser()` — upsert user vào Postgres
 4. Gắn `user_id` (UUID string) + `prep_user` (*domain.PrepUser) vào Gin context
 
