@@ -1,12 +1,10 @@
 package handler
 
 import (
-	"fmt"
 	"io"
 	"net/http"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/gin-gonic/gin"
 
@@ -181,17 +179,37 @@ func (handler *VocabularyHandler) ListTopics(c *gin.Context) {
 // --- OCR endpoints ---
 
 func (handler *VocabularyHandler) ProcessOCRScan(ctx *gin.Context) {
-	const maxImageSize = 5 << 20 // 5MB
+	const maxImageSize = 10 << 20 // 10MB
 
+	// Parse multipart form fields (type, language, engine)
 	var httpReq vdto.OCRScanHTTPRequest
-	if err := ctx.ShouldBindJSON(&httpReq); err != nil {
+	if err := ctx.ShouldBind(&httpReq); err != nil {
 		response.ValidationError(ctx, err)
 		return
 	}
 
-	imageBytes, err := downloadImage(httpReq.ImageURL, maxImageSize)
+	// Read uploaded image file
+	file, header, err := ctx.Request.FormFile("image")
 	if err != nil {
-		response.BadRequest(ctx, "ocr.image_download_failed")
+		response.BadRequest(ctx, "ocr.image_required")
+		return
+	}
+	defer file.Close()
+
+	if header.Size > maxImageSize {
+		response.BadRequest(ctx, "ocr.image_too_large")
+		return
+	}
+
+	imageBytes, err := io.ReadAll(io.LimitReader(file, maxImageSize+1))
+	if err != nil {
+		response.BadRequest(ctx, "ocr.image_read_failed")
+		return
+	}
+
+	contentType := http.DetectContentType(imageBytes)
+	if !strings.HasPrefix(contentType, "image/") {
+		response.BadRequest(ctx, "ocr.invalid_image_type")
 		return
 	}
 
@@ -218,34 +236,6 @@ func (handler *VocabularyHandler) ProcessOCRScan(ctx *gin.Context) {
 	}
 
 	response.Success(ctx, http.StatusOK, result)
-}
-
-func downloadImage(imageURL string, maxSize int64) ([]byte, error) {
-	client := &http.Client{Timeout: 10 * time.Second}
-	resp, err := client.Get(imageURL)
-	if err != nil {
-		return nil, fmt.Errorf("download image: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("download image: status %d", resp.StatusCode)
-	}
-
-	data, err := io.ReadAll(io.LimitReader(resp.Body, maxSize+1))
-	if err != nil {
-		return nil, fmt.Errorf("read image: %w", err)
-	}
-	if int64(len(data)) > maxSize {
-		return nil, fmt.Errorf("image exceeds %d bytes", maxSize)
-	}
-
-	contentType := http.DetectContentType(data)
-	if !strings.HasPrefix(contentType, "image/") {
-		return nil, fmt.Errorf("not an image: detected %s", contentType)
-	}
-
-	return data, nil
 }
 
 // --- Import endpoints ---
