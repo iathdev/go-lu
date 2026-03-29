@@ -49,15 +49,15 @@ func NewRouter(
 	r.GET("/health", healthHandler(db))
 
 	// Public routes with rate limiting
-	public := r.Group("/")
+	public := r.Group("/api")
 	public.Use(middleware.GlobalRateLimitMiddleware(redisClient, cfg.GetRateLimitRPS(), cfg.GetRateLimitBurst()))
 
 	// Protected routes
-	v1 := r.Group("/api")
-	v1.Use(middleware.AuthMiddleware(authModule.PrepUserService, authModule.AuthUseCase))
+	protected := r.Group("/api")
+	protected.Use(middleware.AuthMiddleware(authModule.PrepUserService, authModule.AuthUseCase))
 
 	// Register modules
-	authModule.RegisterRoutes(public, v1)
+	authModule.RegisterRoutes(public, protected)
 
 	r.NoRoute(func(c *gin.Context) {
 		response.NotFound(c, "common.route_not_found")
