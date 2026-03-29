@@ -6,7 +6,7 @@ import (
 	"learning-go/internal/shared/common"
 	"learning-go/internal/shared/logger"
 	"learning-go/internal/shared/response"
-	"net/http"
+
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -153,6 +153,6 @@ func rejectRateLimit(c *gin.Context, ip string, retryAfter int) {
 	if retryAfter > 0 {
 		c.Header("Retry-After", strconv.Itoa(retryAfter))
 	}
-	response.Error(c, http.StatusTooManyRequests, "common.too_many_requests")
+	response.TooManyRequests(c, "common.too_many_requests")
 	c.Abort()
 }

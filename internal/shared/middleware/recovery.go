@@ -1,7 +1,6 @@
 package middleware
 
 import (
-	"fmt"
 	infrasentry "learning-go/internal/infrastructure/sentry"
 	"learning-go/internal/shared/logger"
 	"learning-go/internal/shared/response"
@@ -23,7 +22,7 @@ func RecoveryMiddleware() gin.HandlerFunc {
 		// Report to Sentry (no-op if Sentry DSN is not configured)
 		infrasentry.RecoverWithSentry(recovered)
 
-		response.InternalServerError(c, fmt.Sprintf("%v", recovered))
+		response.InternalServerError(c, "common.internal_server_error")
 		c.Abort()
 	})
 }

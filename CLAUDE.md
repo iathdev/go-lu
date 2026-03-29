@@ -104,4 +104,6 @@ Design docs in `.claude/docs/`
 ## Rules
 
 - **Coding Style**: See [`.claude/rules/coding_style.md`](.claude/rules/coding_style.md)
+- **Error Handling**: See [`.claude/rules/error_handling.md`](.claude/rules/error_handling.md)
+- **API Response Contract**: See [`.claude/rules/api_response.md`](.claude/rules/api_response.md)
 - **Planning Rules**: See [`.claude/rules/planning_rules.md`](.claude/rules/planning_rules.md)
