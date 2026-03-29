@@ -33,29 +33,29 @@ type VocabularyModel struct {
 
 func (VocabularyModel) TableName() string { return "vocabularies" }
 
-func (model *VocabularyModel) ToEntity() *domain.Vocabulary {
-	examples := make([]domain.Example, len(model.Examples.Data))
-	copy(examples, model.Examples.Data)
+func (m *VocabularyModel) ToEntity() *domain.Vocabulary {
+	examples := make([]domain.Example, len(m.Examples.Data))
+	copy(examples, m.Examples.Data)
 
-	radicals := make([]string, len(model.Radicals))
-	copy(radicals, model.Radicals)
+	radicals := make([]string, len(m.Radicals))
+	copy(radicals, m.Radicals)
 
 	return &domain.Vocabulary{
-		ID:              model.ID,
-		Hanzi:           model.Hanzi,
-		Pinyin:          model.Pinyin,
-		MeaningVI:       model.MeaningVI,
-		MeaningEN:       model.MeaningEN,
-		HSKLevel:        model.HSKLevel,
-		AudioURL:        model.AudioURL,
+		ID:              domain.VocabularyIDFromUUID(m.ID),
+		Hanzi:           domain.Hanzi(m.Hanzi),
+		Pinyin:          domain.Pinyin(m.Pinyin),
+		MeaningVI:       m.MeaningVI,
+		MeaningEN:       m.MeaningEN,
+		HSKLevel:        domain.HSKLevel(m.HSKLevel),
+		AudioURL:        m.AudioURL,
 		Examples:        examples,
 		Radicals:        radicals,
-		StrokeCount:     model.StrokeCount,
-		StrokeDataURL:   model.StrokeDataURL,
-		RecognitionOnly: model.RecognitionOnly,
-		FrequencyRank:   model.FrequencyRank,
-		CreatedAt:       model.CreatedAt,
-		UpdatedAt:       model.UpdatedAt,
+		StrokeCount:     m.StrokeCount,
+		StrokeDataURL:   m.StrokeDataURL,
+		RecognitionOnly: m.RecognitionOnly,
+		FrequencyRank:   m.FrequencyRank,
+		CreatedAt:       m.CreatedAt,
+		UpdatedAt:       m.UpdatedAt,
 	}
 }
 
@@ -64,12 +64,12 @@ func FromVocabularyEntity(vocab *domain.Vocabulary) *VocabularyModel {
 	copy(radicals, vocab.Radicals)
 
 	return &VocabularyModel{
-		ID:              vocab.ID,
-		Hanzi:           vocab.Hanzi,
-		Pinyin:          vocab.Pinyin,
+		ID:              vocab.ID.UUID(),
+		Hanzi:           vocab.Hanzi.String(),
+		Pinyin:          vocab.Pinyin.String(),
 		MeaningVI:       vocab.MeaningVI,
 		MeaningEN:       vocab.MeaningEN,
-		HSKLevel:        vocab.HSKLevel,
+		HSKLevel:        vocab.HSKLevel.Int(),
 		AudioURL:        vocab.AudioURL,
 		Examples:        common.NewJSONB(vocab.Examples),
 		Radicals:        radicals,

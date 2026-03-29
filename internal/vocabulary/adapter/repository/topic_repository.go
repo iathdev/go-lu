@@ -7,7 +7,6 @@ import (
 	"learning-go/internal/vocabulary/application/port"
 	"learning-go/internal/vocabulary/domain"
 
-	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
@@ -42,12 +41,16 @@ func (repo *TopicRepository) FindBySlug(ctx context.Context, slug string) (*doma
 	return m.ToEntity(), nil
 }
 
-func (repo *TopicRepository) FindByIDs(ctx context.Context, ids []uuid.UUID) ([]*domain.Topic, error) {
+func (repo *TopicRepository) FindByIDs(ctx context.Context, ids []domain.TopicID) ([]*domain.Topic, error) {
 	if len(ids) == 0 {
 		return []*domain.Topic{}, nil
 	}
+	uuids := make([]any, 0, len(ids))
+	for _, id := range ids {
+		uuids = append(uuids, id.UUID())
+	}
 	var models []model.TopicModel
-	if err := repo.db.WithContext(ctx).Where("id IN ?", ids).Order("sort_order ASC").Find(&models).Error; err != nil {
+	if err := repo.db.WithContext(ctx).Where("id IN ?", uuids).Order("sort_order ASC").Find(&models).Error; err != nil {
 		return nil, err
 	}
 	result := make([]*domain.Topic, 0, len(models))
@@ -57,11 +60,11 @@ func (repo *TopicRepository) FindByIDs(ctx context.Context, ids []uuid.UUID) ([]
 	return result, nil
 }
 
-func (repo *TopicRepository) FindByVocabularyID(ctx context.Context, vocabID uuid.UUID) ([]*domain.Topic, error) {
+func (repo *TopicRepository) FindByVocabularyID(ctx context.Context, vocabID domain.VocabularyID) ([]*domain.Topic, error) {
 	var models []model.TopicModel
 	if err := repo.db.WithContext(ctx).
 		Joins("JOIN vocabulary_topics vt ON vt.topic_id = topics.id").
-		Where("vt.vocabulary_id = ?", vocabID).
+		Where("vt.vocabulary_id = ?", vocabID.UUID()).
 		Order("sort_order ASC").
 		Find(&models).Error; err != nil {
 		return nil, err

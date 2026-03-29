@@ -20,21 +20,21 @@ type FolderModel struct {
 
 func (FolderModel) TableName() string { return "folders" }
 
-func (model *FolderModel) ToEntity() *domain.Folder {
+func (m *FolderModel) ToEntity() *domain.Folder {
 	return &domain.Folder{
-		ID:          model.ID,
-		UserID:      model.UserID,
-		Name:        model.Name,
-		Description: model.Description,
-		CreatedAt:   model.CreatedAt,
-		UpdatedAt:   model.UpdatedAt,
+		ID:          domain.FolderIDFromUUID(m.ID),
+		UserID:      domain.UserIDFromUUID(m.UserID),
+		Name:        m.Name,
+		Description: m.Description,
+		CreatedAt:   m.CreatedAt,
+		UpdatedAt:   m.UpdatedAt,
 	}
 }
 
 func FromFolderEntity(folder *domain.Folder) *FolderModel {
 	return &FolderModel{
-		ID:          folder.ID,
-		UserID:      folder.UserID,
+		ID:          folder.ID.UUID(),
+		UserID:      folder.UserID.UUID(),
 		Name:        folder.Name,
 		Description: folder.Description,
 		CreatedAt:   folder.CreatedAt,

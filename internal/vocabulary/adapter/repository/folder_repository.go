@@ -8,7 +8,6 @@ import (
 	"learning-go/internal/vocabulary/domain"
 	"time"
 
-	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
@@ -30,9 +29,9 @@ func (repo *FolderRepository) Save(ctx context.Context, folder *domain.Folder) e
 	return nil
 }
 
-func (repo *FolderRepository) FindByID(ctx context.Context, id uuid.UUID) (*domain.Folder, error) {
+func (repo *FolderRepository) FindByID(ctx context.Context, id domain.FolderID) (*domain.Folder, error) {
 	var m model.FolderModel
-	if err := repo.db.WithContext(ctx).First(&m, "id = ?", id).Error; err != nil {
+	if err := repo.db.WithContext(ctx).First(&m, "id = ?", id.UUID()).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
@@ -41,9 +40,9 @@ func (repo *FolderRepository) FindByID(ctx context.Context, id uuid.UUID) (*doma
 	return m.ToEntity(), nil
 }
 
-func (repo *FolderRepository) FindByUserID(ctx context.Context, userID uuid.UUID) ([]*domain.Folder, error) {
+func (repo *FolderRepository) FindByUserID(ctx context.Context, userID domain.UserID) ([]*domain.Folder, error) {
 	var models []model.FolderModel
-	if err := repo.db.WithContext(ctx).Where("user_id = ?", userID).Order("created_at DESC").Find(&models).Error; err != nil {
+	if err := repo.db.WithContext(ctx).Where("user_id = ?", userID.UUID()).Order("created_at DESC").Find(&models).Error; err != nil {
 		return nil, err
 	}
 	result := make([]*domain.Folder, 0, len(models))
@@ -62,30 +61,30 @@ func (repo *FolderRepository) Update(ctx context.Context, folder *domain.Folder)
 	return nil
 }
 
-func (repo *FolderRepository) Delete(ctx context.Context, id uuid.UUID) error {
-	return repo.db.WithContext(ctx).Delete(&model.FolderModel{}, "id = ?", id).Error
+func (repo *FolderRepository) Delete(ctx context.Context, id domain.FolderID) error {
+	return repo.db.WithContext(ctx).Delete(&model.FolderModel{}, "id = ?", id.UUID()).Error
 }
 
-func (repo *FolderRepository) AddVocabulary(ctx context.Context, folderID, vocabID uuid.UUID) error {
+func (repo *FolderRepository) AddVocabulary(ctx context.Context, folderID domain.FolderID, vocabID domain.VocabularyID) error {
 	fv := model.FolderVocabularyModel{
-		FolderID:     folderID,
-		VocabularyID: vocabID,
+		FolderID:     folderID.UUID(),
+		VocabularyID: vocabID.UUID(),
 		AddedAt:      time.Now(),
 	}
 	return repo.db.WithContext(ctx).Create(&fv).Error
 }
 
-func (repo *FolderRepository) RemoveVocabulary(ctx context.Context, folderID, vocabID uuid.UUID) error {
+func (repo *FolderRepository) RemoveVocabulary(ctx context.Context, folderID domain.FolderID, vocabID domain.VocabularyID) error {
 	return repo.db.WithContext(ctx).
-		Where("folder_id = ? AND vocabulary_id = ?", folderID, vocabID).
+		Where("folder_id = ? AND vocabulary_id = ?", folderID.UUID(), vocabID.UUID()).
 		Delete(&model.FolderVocabularyModel{}).Error
 }
 
-func (repo *FolderRepository) FindVocabularies(ctx context.Context, folderID uuid.UUID, offset, limit int) ([]*domain.Vocabulary, error) {
+func (repo *FolderRepository) FindVocabularies(ctx context.Context, folderID domain.FolderID, offset, limit int) ([]*domain.Vocabulary, error) {
 	var models []model.VocabularyModel
 	if err := repo.db.WithContext(ctx).
 		Joins("JOIN folder_vocabularies fv ON fv.vocabulary_id = vocabularies.id").
-		Where("fv.folder_id = ?", folderID).
+		Where("fv.folder_id = ?", folderID.UUID()).
 		Offset(offset).Limit(limit).Order("fv.added_at DESC").
 		Find(&models).Error; err != nil {
 		return nil, err
@@ -93,10 +92,10 @@ func (repo *FolderRepository) FindVocabularies(ctx context.Context, folderID uui
 	return toVocabEntities(models), nil
 }
 
-func (repo *FolderRepository) CountVocabularies(ctx context.Context, folderID uuid.UUID) (int64, error) {
+func (repo *FolderRepository) CountVocabularies(ctx context.Context, folderID domain.FolderID) (int64, error) {
 	var count int64
 	if err := repo.db.WithContext(ctx).Model(&model.FolderVocabularyModel{}).
-		Where("folder_id = ?", folderID).Count(&count).Error; err != nil {
+		Where("folder_id = ?", folderID.UUID()).Count(&count).Error; err != nil {
 		return 0, err
 	}
 	return count, nil

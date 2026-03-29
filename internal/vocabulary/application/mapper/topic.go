@@ -24,6 +24,6 @@ func ToGrammarPointResponse(gp *domain.GrammarPoint) vdto.GrammarPointResponse {
 		ExampleVI:     gp.ExampleVI,
 		Rule:          gp.Rule,
 		CommonMistake: gp.CommonMistake,
-		HSKLevel:      gp.HSKLevel,
+		HSKLevel:      gp.HSKLevel.Int(),
 	}
 }

@@ -2,13 +2,12 @@ package usecase
 
 import (
 	"context"
+
 	apperr "learning-go/internal/shared/error"
 	vdto "learning-go/internal/vocabulary/application/dto"
 	"learning-go/internal/vocabulary/application/mapper"
 	"learning-go/internal/vocabulary/application/port"
 	"learning-go/internal/vocabulary/domain"
-
-	"github.com/google/uuid"
 )
 
 type FolderCommand struct {
@@ -21,7 +20,7 @@ func NewFolderCommand(folderRepo port.FolderRepositoryPort, vocabRepo port.Vocab
 }
 
 func (useCase *FolderCommand) CreateFolder(ctx context.Context, userID string, req vdto.CreateFolderRequest) (*vdto.FolderResponse, error) {
-	uid, err := uuid.Parse(userID)
+	uid, err := domain.ParseUserID(userID)
 	if err != nil {
 		return nil, apperr.BadRequest("folder.invalid_user_id")
 	}
@@ -74,7 +73,7 @@ func (useCase *FolderCommand) AddVocabulary(ctx context.Context, folderID string
 		return err
 	}
 
-	vid, err := uuid.Parse(vocabID)
+	vid, err := domain.ParseVocabularyID(vocabID)
 	if err != nil {
 		return apperr.BadRequest("vocabulary.invalid_id")
 	}
@@ -100,7 +99,7 @@ func (useCase *FolderCommand) RemoveVocabulary(ctx context.Context, folderID str
 		return err
 	}
 
-	vid, err := uuid.Parse(vocabID)
+	vid, err := domain.ParseVocabularyID(vocabID)
 	if err != nil {
 		return apperr.BadRequest("vocabulary.invalid_id")
 	}

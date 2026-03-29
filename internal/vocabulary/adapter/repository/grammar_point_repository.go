@@ -7,7 +7,6 @@ import (
 	"learning-go/internal/vocabulary/application/port"
 	"learning-go/internal/vocabulary/domain"
 
-	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
@@ -19,11 +18,11 @@ func NewGrammarPointRepository(db *gorm.DB) port.GrammarPointRepositoryPort {
 	return &GrammarPointRepository{db: db}
 }
 
-func (repo *GrammarPointRepository) FindByVocabularyID(ctx context.Context, vocabID uuid.UUID) ([]*domain.GrammarPoint, error) {
+func (repo *GrammarPointRepository) FindByVocabularyID(ctx context.Context, vocabID domain.VocabularyID) ([]*domain.GrammarPoint, error) {
 	var models []model.GrammarPointModel
 	if err := repo.db.WithContext(ctx).
 		Joins("JOIN vocabulary_grammar_points vgp ON vgp.grammar_point_id = grammar_points.id").
-		Where("vgp.vocabulary_id = ?", vocabID).
+		Where("vgp.vocabulary_id = ?", vocabID.UUID()).
 		Find(&models).Error; err != nil {
 		return nil, err
 	}
@@ -57,12 +56,16 @@ func (repo *GrammarPointRepository) FindByCode(ctx context.Context, code string)
 	return m.ToEntity(), nil
 }
 
-func (repo *GrammarPointRepository) FindByIDs(ctx context.Context, ids []uuid.UUID) ([]*domain.GrammarPoint, error) {
+func (repo *GrammarPointRepository) FindByIDs(ctx context.Context, ids []domain.GrammarPointID) ([]*domain.GrammarPoint, error) {
 	if len(ids) == 0 {
 		return []*domain.GrammarPoint{}, nil
 	}
+	uuids := make([]any, 0, len(ids))
+	for _, id := range ids {
+		uuids = append(uuids, id.UUID())
+	}
 	var models []model.GrammarPointModel
-	if err := repo.db.WithContext(ctx).Where("id IN ?", ids).Find(&models).Error; err != nil {
+	if err := repo.db.WithContext(ctx).Where("id IN ?", uuids).Find(&models).Error; err != nil {
 		return nil, err
 	}
 	result := make([]*domain.GrammarPoint, 0, len(models))

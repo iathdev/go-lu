@@ -21,16 +21,16 @@ type GrammarPointModel struct {
 
 func (GrammarPointModel) TableName() string { return "grammar_points" }
 
-func (model *GrammarPointModel) ToEntity() *domain.GrammarPoint {
+func (m *GrammarPointModel) ToEntity() *domain.GrammarPoint {
 	return &domain.GrammarPoint{
-		ID:            model.ID,
-		Code:          model.Code,
-		Pattern:       model.Pattern,
-		ExampleCN:     model.ExampleCN,
-		ExampleVI:     model.ExampleVI,
-		Rule:          model.Rule,
-		CommonMistake: model.CommonMistake,
-		HSKLevel:      model.HSKLevel,
-		CreatedAt:     model.CreatedAt,
+		ID:            domain.GrammarPointIDFromUUID(m.ID),
+		Code:          m.Code,
+		Pattern:       m.Pattern,
+		ExampleCN:     m.ExampleCN,
+		ExampleVI:     m.ExampleVI,
+		Rule:          m.Rule,
+		CommonMistake: m.CommonMistake,
+		HSKLevel:      domain.HSKLevel(m.HSKLevel),
+		CreatedAt:     m.CreatedAt,
 	}
 }

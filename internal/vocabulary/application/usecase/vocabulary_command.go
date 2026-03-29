@@ -2,14 +2,12 @@ package usecase
 
 import (
 	"context"
-	"errors"
+
 	apperr "learning-go/internal/shared/error"
 	vdto "learning-go/internal/vocabulary/application/dto"
 	"learning-go/internal/vocabulary/application/mapper"
 	"learning-go/internal/vocabulary/application/port"
 	"learning-go/internal/vocabulary/domain"
-
-	"github.com/google/uuid"
 )
 
 type VocabularyCommand struct {
@@ -55,12 +53,12 @@ func (useCase *VocabularyCommand) CreateVocabulary(ctx context.Context, req vdto
 }
 
 func (useCase *VocabularyCommand) UpdateVocabulary(ctx context.Context, id string, req vdto.UpdateVocabularyRequest) (*vdto.VocabularyResponse, error) {
-	uuidID, err := uuid.Parse(id)
+	vocabID, err := domain.ParseVocabularyID(id)
 	if err != nil {
 		return nil, apperr.BadRequest("vocabulary.invalid_id")
 	}
 
-	vocab, err := useCase.vocabRepo.FindByID(ctx, uuidID)
+	vocab, err := useCase.vocabRepo.FindByID(ctx, vocabID)
 	if err != nil {
 		return nil, apperr.InternalServerError("vocabulary.query_failed", err)
 	}
@@ -93,36 +91,36 @@ func (useCase *VocabularyCommand) UpdateVocabulary(ctx context.Context, id strin
 
 	// Set topics if provided
 	if req.TopicIDs != nil {
-		topicUUIDs, parseErr := parseUUIDs(req.TopicIDs)
+		topicIDs, parseErr := parseTopicIDs(req.TopicIDs)
 		if parseErr != nil {
 			return nil, apperr.BadRequest("vocabulary.invalid_topic_id")
 		}
-		found, err := useCase.topicRepo.FindByIDs(ctx, topicUUIDs)
+		found, err := useCase.topicRepo.FindByIDs(ctx, topicIDs)
 		if err != nil {
 			return nil, apperr.InternalServerError("topic.query_failed", err)
 		}
-		if len(found) != len(topicUUIDs) {
+		if len(found) != len(topicIDs) {
 			return nil, apperr.BadRequest("vocabulary.invalid_topic_id")
 		}
-		if err := useCase.vocabRepo.SetTopics(ctx, uuidID, topicUUIDs); err != nil {
+		if err := useCase.vocabRepo.SetTopics(ctx, vocabID, topicIDs); err != nil {
 			return nil, apperr.InternalServerError("vocabulary.set_topics_failed", err)
 		}
 	}
 
 	// Set grammar points if provided
 	if req.GrammarPointIDs != nil {
-		gpUUIDs, parseErr := parseUUIDs(req.GrammarPointIDs)
+		gpIDs, parseErr := parseGrammarPointIDs(req.GrammarPointIDs)
 		if parseErr != nil {
 			return nil, apperr.BadRequest("vocabulary.invalid_grammar_point_id")
 		}
-		found, err := useCase.grammarRepo.FindByIDs(ctx, gpUUIDs)
+		found, err := useCase.grammarRepo.FindByIDs(ctx, gpIDs)
 		if err != nil {
 			return nil, apperr.InternalServerError("grammar_point.query_failed", err)
 		}
-		if len(found) != len(gpUUIDs) {
+		if len(found) != len(gpIDs) {
 			return nil, apperr.BadRequest("vocabulary.invalid_grammar_point_id")
 		}
-		if err := useCase.vocabRepo.SetGrammarPoints(ctx, uuidID, gpUUIDs); err != nil {
+		if err := useCase.vocabRepo.SetGrammarPoints(ctx, vocabID, gpIDs); err != nil {
 			return nil, apperr.InternalServerError("vocabulary.set_grammar_points_failed", err)
 		}
 	}
@@ -131,12 +129,12 @@ func (useCase *VocabularyCommand) UpdateVocabulary(ctx context.Context, id strin
 }
 
 func (useCase *VocabularyCommand) DeleteVocabulary(ctx context.Context, id string) error {
-	uuidID, err := uuid.Parse(id)
+	vocabID, err := domain.ParseVocabularyID(id)
 	if err != nil {
 		return apperr.BadRequest("vocabulary.invalid_id")
 	}
 
-	vocab, err := useCase.vocabRepo.FindByID(ctx, uuidID)
+	vocab, err := useCase.vocabRepo.FindByID(ctx, vocabID)
 	if err != nil {
 		return apperr.InternalServerError("vocabulary.query_failed", err)
 	}
@@ -144,36 +142,9 @@ func (useCase *VocabularyCommand) DeleteVocabulary(ctx context.Context, id strin
 		return apperr.NotFound("vocabulary.not_found")
 	}
 
-	if err := useCase.vocabRepo.Delete(ctx, uuidID); err != nil {
+	if err := useCase.vocabRepo.Delete(ctx, vocabID); err != nil {
 		return apperr.InternalServerError("vocabulary.delete_failed", err)
 	}
 
 	return nil
-}
-
-func parseUUIDs(ids []string) ([]uuid.UUID, error) {
-	result := make([]uuid.UUID, 0, len(ids))
-	for _, id := range ids {
-		u, err := uuid.Parse(id)
-		if err != nil {
-			return nil, err
-		}
-		result = append(result, u)
-	}
-	return result, nil
-}
-
-func mapVocabEntityError(err error) error {
-	switch {
-	case errors.Is(err, domain.ErrHanziRequired):
-		return apperr.UnprocessableEntity("vocabulary.hanzi_required")
-	case errors.Is(err, domain.ErrPinyinRequired):
-		return apperr.UnprocessableEntity("vocabulary.pinyin_required")
-	case errors.Is(err, domain.ErrMeaningRequired):
-		return apperr.UnprocessableEntity("vocabulary.meaning_required")
-	case errors.Is(err, domain.ErrInvalidHSKLevel):
-		return apperr.UnprocessableEntity("vocabulary.invalid_hsk_level")
-	default:
-		return apperr.InternalServerError("common.internal_server_error", err)
-	}
 }

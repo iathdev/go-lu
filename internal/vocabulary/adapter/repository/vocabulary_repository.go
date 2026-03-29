@@ -7,7 +7,6 @@ import (
 	"learning-go/internal/vocabulary/application/port"
 	"learning-go/internal/vocabulary/domain"
 
-	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
@@ -29,9 +28,9 @@ func (repo *VocabularyRepository) Save(ctx context.Context, vocab *domain.Vocabu
 	return nil
 }
 
-func (repo *VocabularyRepository) FindByID(ctx context.Context, id uuid.UUID) (*domain.Vocabulary, error) {
+func (repo *VocabularyRepository) FindByID(ctx context.Context, id domain.VocabularyID) (*domain.Vocabulary, error) {
 	var m model.VocabularyModel
-	if err := repo.db.WithContext(ctx).First(&m, "id = ?", id).Error; err != nil {
+	if err := repo.db.WithContext(ctx).First(&m, "id = ?", id.UUID()).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
@@ -78,11 +77,11 @@ func (repo *VocabularyRepository) CountByHSKLevel(ctx context.Context, level int
 	return count, nil
 }
 
-func (repo *VocabularyRepository) FindByTopicID(ctx context.Context, topicID uuid.UUID, offset, limit int) ([]*domain.Vocabulary, error) {
+func (repo *VocabularyRepository) FindByTopicID(ctx context.Context, topicID domain.TopicID, offset, limit int) ([]*domain.Vocabulary, error) {
 	var models []model.VocabularyModel
 	if err := repo.db.WithContext(ctx).
 		Joins("JOIN vocabulary_topics vt ON vt.vocabulary_id = vocabularies.id").
-		Where("vt.topic_id = ?", topicID).
+		Where("vt.topic_id = ?", topicID.UUID()).
 		Offset(offset).Limit(limit).Order("pinyin ASC").
 		Find(&models).Error; err != nil {
 		return nil, err
@@ -90,10 +89,10 @@ func (repo *VocabularyRepository) FindByTopicID(ctx context.Context, topicID uui
 	return toVocabEntities(models), nil
 }
 
-func (repo *VocabularyRepository) CountByTopicID(ctx context.Context, topicID uuid.UUID) (int64, error) {
+func (repo *VocabularyRepository) CountByTopicID(ctx context.Context, topicID domain.TopicID) (int64, error) {
 	var count int64
 	if err := repo.db.WithContext(ctx).Model(&model.VocabularyTopicModel{}).
-		Where("topic_id = ?", topicID).Count(&count).Error; err != nil {
+		Where("topic_id = ?", topicID.UUID()).Count(&count).Error; err != nil {
 		return 0, err
 	}
 	return count, nil
@@ -130,8 +129,8 @@ func (repo *VocabularyRepository) Update(ctx context.Context, vocab *domain.Voca
 	return nil
 }
 
-func (repo *VocabularyRepository) Delete(ctx context.Context, id uuid.UUID) error {
-	return repo.db.WithContext(ctx).Delete(&model.VocabularyModel{}, "id = ?", id).Error
+func (repo *VocabularyRepository) Delete(ctx context.Context, id domain.VocabularyID) error {
+	return repo.db.WithContext(ctx).Delete(&model.VocabularyModel{}, "id = ?", id.UUID()).Error
 }
 
 func (repo *VocabularyRepository) SaveBatch(ctx context.Context, vocabs []*domain.Vocabulary) (int, error) {
@@ -152,29 +151,28 @@ func (repo *VocabularyRepository) SaveBatch(ctx context.Context, vocabs []*domai
 	return int(result.RowsAffected), nil
 }
 
-func (repo *VocabularyRepository) SetTopics(ctx context.Context, vocabID uuid.UUID, topicIDs []uuid.UUID) error {
-	err := repo.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		if err := tx.Where("vocabulary_id = ?", vocabID).Delete(&model.VocabularyTopicModel{}).Error; err != nil {
+func (repo *VocabularyRepository) SetTopics(ctx context.Context, vocabID domain.VocabularyID, topicIDs []domain.TopicID) error {
+	return repo.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Where("vocabulary_id = ?", vocabID.UUID()).Delete(&model.VocabularyTopicModel{}).Error; err != nil {
 			return err
 		}
 		for _, tid := range topicIDs {
-			vt := model.VocabularyTopicModel{VocabularyID: vocabID, TopicID: tid}
+			vt := model.VocabularyTopicModel{VocabularyID: vocabID.UUID(), TopicID: tid.UUID()}
 			if err := tx.Create(&vt).Error; err != nil {
 				return err
 			}
 		}
 		return nil
 	})
-	return err
 }
 
-func (repo *VocabularyRepository) SetGrammarPoints(ctx context.Context, vocabID uuid.UUID, grammarPointIDs []uuid.UUID) error {
+func (repo *VocabularyRepository) SetGrammarPoints(ctx context.Context, vocabID domain.VocabularyID, grammarPointIDs []domain.GrammarPointID) error {
 	return repo.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		if err := tx.Where("vocabulary_id = ?", vocabID).Delete(&model.VocabularyGrammarPointModel{}).Error; err != nil {
+		if err := tx.Where("vocabulary_id = ?", vocabID.UUID()).Delete(&model.VocabularyGrammarPointModel{}).Error; err != nil {
 			return err
 		}
 		for _, gpid := range grammarPointIDs {
-			vgp := model.VocabularyGrammarPointModel{VocabularyID: vocabID, GrammarPointID: gpid}
+			vgp := model.VocabularyGrammarPointModel{VocabularyID: vocabID.UUID(), GrammarPointID: gpid.UUID()}
 			if err := tx.Create(&vgp).Error; err != nil {
 				return err
 			}

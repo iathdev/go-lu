@@ -19,14 +19,14 @@ type TopicModel struct {
 
 func (TopicModel) TableName() string { return "topics" }
 
-func (model *TopicModel) ToEntity() *domain.Topic {
+func (m *TopicModel) ToEntity() *domain.Topic {
 	return &domain.Topic{
-		ID:        model.ID,
-		NameCN:    model.NameCN,
-		NameVI:    model.NameVI,
-		NameEN:    model.NameEN,
-		Slug:      model.Slug,
-		SortOrder: model.SortOrder,
-		CreatedAt: model.CreatedAt,
+		ID:        domain.TopicIDFromUUID(m.ID),
+		NameCN:    m.NameCN,
+		NameVI:    m.NameVI,
+		NameEN:    m.NameEN,
+		Slug:      m.Slug,
+		SortOrder: m.SortOrder,
+		CreatedAt: m.CreatedAt,
 	}
 }

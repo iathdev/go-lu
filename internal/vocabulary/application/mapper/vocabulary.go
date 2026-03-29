@@ -11,11 +11,11 @@ import (
 func ToVocabularyListResponse(vocab *domain.Vocabulary) vdto.VocabularyListResponse {
 	return vdto.VocabularyListResponse{
 		ID:        vocab.ID.String(),
-		Hanzi:     vocab.Hanzi,
-		Pinyin:    vocab.Pinyin,
+		Hanzi:     vocab.Hanzi.String(),
+		Pinyin:    vocab.Pinyin.String(),
 		MeaningVI: vocab.MeaningVI,
 		MeaningEN: vocab.MeaningEN,
-		HSKLevel:  vocab.HSKLevel,
+		HSKLevel:  vocab.HSKLevel.Int(),
 	}
 }
 
@@ -34,11 +34,11 @@ func ToVocabularyResponse(vocab *domain.Vocabulary) *vdto.VocabularyResponse {
 
 	return &vdto.VocabularyResponse{
 		ID:              vocab.ID.String(),
-		Hanzi:           vocab.Hanzi,
-		Pinyin:          vocab.Pinyin,
+		Hanzi:           vocab.Hanzi.String(),
+		Pinyin:          vocab.Pinyin.String(),
 		MeaningVI:       vocab.MeaningVI,
 		MeaningEN:       vocab.MeaningEN,
-		HSKLevel:        vocab.HSKLevel,
+		HSKLevel:        vocab.HSKLevel.Int(),
 		AudioURL:        vocab.AudioURL,
 		Examples:        examples,
 		Radicals:        vocab.Radicals,

@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+
 	apperr "learning-go/internal/shared/error"
 	vdto "learning-go/internal/vocabulary/application/dto"
 	"learning-go/internal/vocabulary/application/mapper"
@@ -20,8 +21,8 @@ func NewImportCommand(vocabRepo port.VocabularyRepositoryPort) port.ImportComman
 func (useCase *ImportCommand) ImportVocabularies(ctx context.Context, req vdto.BulkImportRequest) (*vdto.BulkImportResponse, error) {
 	// Collect all hanzi to check for existing
 	hanziList := make([]string, 0, len(req.Vocabularies))
-	for _, v := range req.Vocabularies {
-		hanziList = append(hanziList, v.Hanzi)
+	for _, vocab := range req.Vocabularies {
+		hanziList = append(hanziList, vocab.Hanzi)
 	}
 
 	existing, err := useCase.vocabRepo.FindByHanziList(ctx, hanziList)
@@ -30,32 +31,32 @@ func (useCase *ImportCommand) ImportVocabularies(ctx context.Context, req vdto.B
 	}
 
 	existingSet := make(map[string]bool, len(existing))
-	for _, v := range existing {
-		existingSet[v.Hanzi] = true
+	for _, vocab := range existing {
+		existingSet[vocab.Hanzi.String()] = true
 	}
 
 	// Filter out duplicates and create domain entities
 	var newVocabs []*domain.Vocabulary
 	skipped := 0
-	for _, v := range req.Vocabularies {
-		if existingSet[v.Hanzi] {
+	for _, item := range req.Vocabularies {
+		if existingSet[item.Hanzi] {
 			skipped++
 			continue
 		}
 
 		vocab, err := domain.NewVocabularyFromParams(domain.VocabularyParams{
-			Hanzi:           v.Hanzi,
-			Pinyin:          v.Pinyin,
-			MeaningVI:       v.MeaningVI,
-			MeaningEN:       v.MeaningEN,
-			HSKLevel:        v.HSKLevel,
-			AudioURL:        v.AudioURL,
-			Examples:        mapper.ToExampleEntities(v.Examples),
-			Radicals:        v.Radicals,
-			StrokeCount:     v.StrokeCount,
-			StrokeDataURL:   v.StrokeDataURL,
-			RecognitionOnly: v.RecognitionOnly,
-			FrequencyRank:   v.FrequencyRank,
+			Hanzi:           item.Hanzi,
+			Pinyin:          item.Pinyin,
+			MeaningVI:       item.MeaningVI,
+			MeaningEN:       item.MeaningEN,
+			HSKLevel:        item.HSKLevel,
+			AudioURL:        item.AudioURL,
+			Examples:        mapper.ToExampleEntities(item.Examples),
+			Radicals:        item.Radicals,
+			StrokeCount:     item.StrokeCount,
+			StrokeDataURL:   item.StrokeDataURL,
+			RecognitionOnly: item.RecognitionOnly,
+			FrequencyRank:   item.FrequencyRank,
 		})
 		if err != nil {
 			skipped++

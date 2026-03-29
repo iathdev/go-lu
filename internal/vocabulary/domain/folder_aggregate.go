@@ -1,32 +1,25 @@
 package domain
 
-import (
-	"errors"
-	"time"
+import "time"
 
-	"github.com/google/uuid"
-)
-
-var (
-	ErrFolderNameRequired = errors.New("folder name is required")
-)
-
+// Folder is the aggregate root for user-created vocabulary decks.
+// Invariants: Name is required, owned by a single user.
 type Folder struct {
-	ID          uuid.UUID
-	UserID      uuid.UUID
+	ID          FolderID
+	UserID      UserID
 	Name        string
 	Description string
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 }
 
-func NewFolder(userID uuid.UUID, name, description string) (*Folder, error) {
+func NewFolder(userID UserID, name, description string) (*Folder, error) {
 	if name == "" {
 		return nil, ErrFolderNameRequired
 	}
 
 	return &Folder{
-		ID:          uuid.Must(uuid.NewV7()),
+		ID:          NewFolderID(),
 		UserID:      userID,
 		Name:        name,
 		Description: description,
