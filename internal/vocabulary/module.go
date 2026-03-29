@@ -36,6 +36,7 @@ func NewModule(db *gorm.DB, ocrScanner port.OCRScannerPort) *Module {
 }
 
 func (module *Module) RegisterRoutes(public, protected *gin.RouterGroup) {
+	//publicV1 := public.Group("/v1")
 	v1 := protected.Group("/v1")
 
 	// Topics
@@ -52,7 +53,7 @@ func (module *Module) RegisterRoutes(public, protected *gin.RouterGroup) {
 	v1.DELETE("/vocabularies/:id", module.handler.DeleteVocabulary)
 
 	// OCR scan
-	public.POST("/vocabularies/ocr-scan", middleware.TimeoutMiddleware(60*time.Second), module.handler.ProcessOCRScan)
+	v1.POST("/vocabularies/ocr-scan", middleware.TimeoutMiddleware(60*time.Second), module.handler.ProcessOCRScan)
 
 	// Admin import
 	v1.POST("/admin/vocabularies/import", module.handler.ImportVocabularies)
