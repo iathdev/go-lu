@@ -22,7 +22,7 @@ func NewAuthHandler(authUseCase port.AuthUseCasePort) *AuthHandler {
 func (handler *AuthHandler) GetMe(c *gin.Context) {
 	userID, err := getUserID(c)
 	if err != nil {
-		response.Unauthorized(c, "auth.unauthorized")
+		response.Unauthorized(c, "common.unauthorized")
 		return
 	}
 

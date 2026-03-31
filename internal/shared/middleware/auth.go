@@ -20,7 +20,7 @@ func AuthMiddleware(prepService port.PrepUserServicePort, authUseCase port.AuthU
 				zap.String("reason", "missing or invalid authorization header"),
 				zap.String("client_ip", common.ResolveClientIP(c.Request)),
 			)
-			response.Unauthorized(c, "auth.unauthorized")
+			response.Unauthorized(c, "common.unauthorized")
 			c.Abort()
 			return
 		}

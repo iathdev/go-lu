@@ -21,7 +21,7 @@ func NewAuthUseCase(userRepo port.UserRepositoryPort) port.AuthUseCasePort {
 func (useCase *AuthUseCase) GetMe(ctx context.Context, userID uuid.UUID, prepUser *domain.PrepUser) (*dto.AuthMeResponse, error) {
 	user, err := useCase.userRepo.FindByID(ctx, userID)
 	if err != nil {
-		return nil, apperr.InternalServerError("auth.internal_error", err)
+		return nil, apperr.InternalServerError("common.internal_error", err)
 	}
 	if user == nil {
 		return nil, apperr.NotFound("auth.not_found")
@@ -42,13 +42,13 @@ func (useCase *AuthUseCase) GetMe(ctx context.Context, userID uuid.UUID, prepUse
 func (useCase *AuthUseCase) UpsertFromPrepUser(ctx context.Context, prepUser *domain.PrepUser) (*domain.User, error) {
 	existing, err := useCase.userRepo.FindByPrepUserID(ctx, prepUser.PrepUserID)
 	if err != nil {
-		return nil, apperr.InternalServerError("auth.internal_error", err)
+		return nil, apperr.InternalServerError("common.internal_error", err)
 	}
 
 	if existing == nil {
 		user := domain.NewUser(prepUser.PrepUserID, prepUser.Email, prepUser.Name)
 		if err := useCase.userRepo.Upsert(ctx, user); err != nil {
-			return nil, apperr.InternalServerError("auth.internal_error", err)
+			return nil, apperr.InternalServerError("common.internal_error", err)
 		}
 		return user, nil
 	}
@@ -57,7 +57,7 @@ func (useCase *AuthUseCase) UpsertFromPrepUser(ctx context.Context, prepUser *do
 		existing.Email = prepUser.Email
 		existing.Name = prepUser.Name
 		if err := useCase.userRepo.Update(ctx, existing); err != nil {
-			return nil, apperr.InternalServerError("auth.internal_error", err)
+			return nil, apperr.InternalServerError("common.internal_error", err)
 		}
 	}
 
