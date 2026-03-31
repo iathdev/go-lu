@@ -16,6 +16,8 @@ type Vocabulary struct {
 	FrequencyRank      int
 	Metadata           map[string]any
 	Meanings           []VocabularyMeaning
+	TopicIDs           []TopicID
+	GrammarPointIDs    []GrammarPointID
 	CreatedAt          time.Time
 	UpdatedAt          time.Time
 }
@@ -47,10 +49,10 @@ type VocabularyExample struct {
 	UpdatedAt    time.Time
 }
 
-// VocabularyParams carries raw input for creating or updating a Vocabulary.
+// VocabularyParams carries typed input for creating or updating a Vocabulary.
 type VocabularyParams struct {
-	LanguageID         string
-	ProficiencyLevelID string
+	LanguageID         LanguageID
+	ProficiencyLevelID ProficiencyLevelID
 	Word               string
 	Phonetic           string
 	AudioURL           string
@@ -60,9 +62,9 @@ type VocabularyParams struct {
 	Meanings           []MeaningParams
 }
 
-// MeaningParams carries raw input for a meaning.
+// MeaningParams carries typed input for a meaning.
 type MeaningParams struct {
-	LanguageID string
+	LanguageID LanguageID
 	Meaning    string
 	WordType   string
 	IsPrimary  bool
@@ -85,27 +87,54 @@ func NewVocabularyFromParams(params VocabularyParams) (*Vocabulary, error) {
 		return nil, ErrMeaningRequired
 	}
 
-	langID, err := ParseLanguageID(params.LanguageID)
-	if err != nil {
-		return nil, ErrWordRequired
-	}
-
-	var plID ProficiencyLevelID
-	if params.ProficiencyLevelID != "" {
-		plID, err = ParseProficiencyLevelID(params.ProficiencyLevelID)
-		if err != nil {
-			return nil, err
-		}
-	}
-
 	vocabID := NewVocabularyID()
-	meanings := make([]VocabularyMeaning, 0, len(params.Meanings))
-	for idx, mp := range params.Meanings {
-		mLangID, parseErr := ParseLanguageID(mp.LanguageID)
-		if parseErr != nil {
-			return nil, parseErr
-		}
+	meanings := buildMeanings(vocabID, params.Meanings)
 
+	return &Vocabulary{
+		ID:                 vocabID,
+		LanguageID:         params.LanguageID,
+		ProficiencyLevelID: params.ProficiencyLevelID,
+		Word:               params.Word,
+		Phonetic:           params.Phonetic,
+		AudioURL:           params.AudioURL,
+		ImageURL:           params.ImageURL,
+		FrequencyRank:      params.FrequencyRank,
+		Metadata:           params.Metadata,
+		Meanings:           meanings,
+	}, nil
+}
+
+func (vocab *Vocabulary) Update(params VocabularyParams) error {
+	if params.Word == "" {
+		return ErrWordRequired
+	}
+	if len(params.Meanings) == 0 {
+		return ErrMeaningRequired
+	}
+
+	vocab.LanguageID = params.LanguageID
+	vocab.ProficiencyLevelID = params.ProficiencyLevelID
+	vocab.Word = params.Word
+	vocab.Phonetic = params.Phonetic
+	vocab.AudioURL = params.AudioURL
+	vocab.ImageURL = params.ImageURL
+	vocab.FrequencyRank = params.FrequencyRank
+	vocab.Metadata = params.Metadata
+	vocab.Meanings = buildMeanings(vocab.ID, params.Meanings)
+	return nil
+}
+
+func (vocab *Vocabulary) SetTopics(topicIDs []TopicID) {
+	vocab.TopicIDs = topicIDs
+}
+
+func (vocab *Vocabulary) SetGrammarPoints(gpIDs []GrammarPointID) {
+	vocab.GrammarPointIDs = gpIDs
+}
+
+func buildMeanings(vocabID VocabularyID, params []MeaningParams) []VocabularyMeaning {
+	meanings := make([]VocabularyMeaning, 0, len(params))
+	for idx, mp := range params {
 		meaningID := NewMeaningID()
 		examples := make([]VocabularyExample, 0, len(mp.Examples))
 		for exIdx, ep := range mp.Examples {
@@ -123,7 +152,7 @@ func NewVocabularyFromParams(params VocabularyParams) (*Vocabulary, error) {
 		meanings = append(meanings, VocabularyMeaning{
 			ID:           meaningID,
 			VocabularyID: vocabID,
-			LanguageID:   mLangID,
+			LanguageID:   mp.LanguageID,
 			Meaning:      mp.Meaning,
 			WordType:     mp.WordType,
 			IsPrimary:    mp.IsPrimary,
@@ -131,17 +160,5 @@ func NewVocabularyFromParams(params VocabularyParams) (*Vocabulary, error) {
 			Examples:     examples,
 		})
 	}
-
-	return &Vocabulary{
-		ID:                 vocabID,
-		LanguageID:         langID,
-		ProficiencyLevelID: plID,
-		Word:               params.Word,
-		Phonetic:           params.Phonetic,
-		AudioURL:           params.AudioURL,
-		ImageURL:           params.ImageURL,
-		FrequencyRank:      params.FrequencyRank,
-		Metadata:           params.Metadata,
-		Meanings:           meanings,
-	}, nil
+	return meanings
 }

@@ -36,7 +36,7 @@ func (useCase *FolderQuery) ListFolders(ctx context.Context, userID string, lang
 
 	folders, err := useCase.folderRepo.FindByUserID(ctx, uid, langIDPtr)
 	if err != nil {
-		return nil, apperr.InternalServerError("folder.query_failed", err)
+		return nil, apperr.InternalServerError("common.internal_server_error", err)
 	}
 
 	// Collect folder IDs for batch count
@@ -72,12 +72,12 @@ func (useCase *FolderQuery) ListVocabularies(ctx context.Context, folderID strin
 
 	total, err := useCase.folderRepo.CountVocabularies(ctx, folder.ID)
 	if err != nil {
-		return nil, apperr.InternalServerError("folder.query_failed", err)
+		return nil, apperr.InternalServerError("common.internal_server_error", err)
 	}
 
 	vocabs, err := useCase.folderRepo.FindVocabularies(ctx, folder.ID, offset, pagination.PageSize)
 	if err != nil {
-		return nil, apperr.InternalServerError("folder.query_failed", err)
+		return nil, apperr.InternalServerError("common.internal_server_error", err)
 	}
 
 	return mapper.ToPaginatedListResult(vocabs, total, pagination), nil

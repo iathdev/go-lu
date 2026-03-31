@@ -30,7 +30,7 @@ func (useCase *TopicQuery) ListTopics(ctx context.Context, categoryID string) ([
 
 	topics, err := useCase.topicRepo.FindAll(ctx, catIDPtr)
 	if err != nil {
-		return nil, apperr.InternalServerError("topic.query_failed", err)
+		return nil, apperr.InternalServerError("common.internal_server_error", err)
 	}
 
 	result := make([]*vdto.TopicResponse, 0, len(topics))
@@ -49,7 +49,7 @@ func (useCase *TopicQuery) GetTopic(ctx context.Context, id string) (*vdto.Topic
 
 	topic, err := useCase.topicRepo.FindByID(ctx, topicID)
 	if err != nil {
-		return nil, apperr.InternalServerError("topic.query_failed", err)
+		return nil, apperr.InternalServerError("common.internal_server_error", err)
 	}
 	if topic == nil {
 		return nil, apperr.NotFound("topic.not_found")

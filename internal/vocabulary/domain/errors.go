@@ -4,8 +4,10 @@ import "errors"
 
 // Vocabulary entity errors
 var (
-	ErrWordRequired    = errors.New("word is required")
-	ErrMeaningRequired = errors.New("at least one meaning is required")
+	ErrWordRequired              = errors.New("word is required")
+	ErrMeaningRequired           = errors.New("at least one meaning is required")
+	ErrInvalidLanguageID         = errors.New("invalid language ID")
+	ErrInvalidProficiencyLevelID = errors.New("invalid proficiency level ID")
 )
 
 // Folder entity errors

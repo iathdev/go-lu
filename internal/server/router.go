@@ -50,6 +50,10 @@ func NewRouter(
 	// Health check
 	r.GET("/health", healthHandler(db))
 
+	// API docs (Swagger UI)
+	r.StaticFile("/docs", ".claude/docs/swagger.html")
+	r.StaticFile("/docs/openapi.yaml", ".claude/docs/openapi.yaml")
+
 	// Public routes with rate limiting
 	public := r.Group("/api")
 	public.Use(middleware.GlobalRateLimitMiddleware(redisClient, cfg.GetRateLimitRPS(), cfg.GetRateLimitBurst()))

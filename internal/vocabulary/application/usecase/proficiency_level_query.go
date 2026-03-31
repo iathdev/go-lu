@@ -30,7 +30,7 @@ func (useCase *ProficiencyLevelQuery) ListProficiencyLevels(ctx context.Context,
 
 	levels, err := useCase.profLevelRepo.FindAll(ctx, catIDPtr)
 	if err != nil {
-		return nil, apperr.InternalServerError("proficiency_level.query_failed", err)
+		return nil, apperr.InternalServerError("common.internal_server_error", err)
 	}
 
 	result := make([]*vdto.ProficiencyLevelResponse, 0, len(levels))
@@ -48,7 +48,7 @@ func (useCase *ProficiencyLevelQuery) GetProficiencyLevel(ctx context.Context, i
 
 	level, err := useCase.profLevelRepo.FindByID(ctx, plID)
 	if err != nil {
-		return nil, apperr.InternalServerError("proficiency_level.query_failed", err)
+		return nil, apperr.InternalServerError("common.internal_server_error", err)
 	}
 	if level == nil {
 		return nil, apperr.NotFound("proficiency_level.not_found")

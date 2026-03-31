@@ -1,0 +1,1753 @@
+openapi: 3.1.0
+info:
+  title: Lu Backend API
+  description: Go REST API for vocabulary learning platform. Modular Monolith with Hexagonal Architecture.
+  version: 1.0.0
+  contact:
+    name: Lu Team
+
+servers:
+  - url: http://localhost:8080
+    description: Local development
+
+tags:
+  - name: Health
+    description: Health check
+  - name: Auth
+    description: Authentication & user profile
+  - name: Languages
+    description: Supported languages
+  - name: Categories
+    description: Language categories (e.g. HSK, JLPT)
+  - name: Proficiency Levels
+    description: Proficiency levels within categories
+  - name: Topics
+    description: Vocabulary topics
+  - name: Grammar Points
+    description: Grammar points
+  - name: Vocabularies
+    description: Vocabulary CRUD & search
+  - name: Folders
+    description: User vocabulary folders
+  - name: OCR
+    description: OCR scanning
+  - name: Admin
+    description: Admin operations
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      description: Prep platform Bearer token
+
+  schemas:
+    # ── Envelope ──────────────────────────────────────────
+    Meta:
+      type: object
+      required: [request_id, timestamp]
+      properties:
+        request_id:
+          type: string
+          format: uuid
+          example: "0193a5e0-7c1a-7000-8000-000000000001"
+        timestamp:
+          type: string
+          format: date-time
+          example: "2026-03-31T12:00:00Z"
+        total:
+          type: integer
+          format: int64
+          description: Total items (list endpoints only)
+        page:
+          type: integer
+          description: Current page (list endpoints only)
+        page_size:
+          type: integer
+          description: Items per page (list endpoints only)
+        total_pages:
+          type: integer
+          description: Total pages (list endpoints only)
+
+    ErrorObject:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          example: "NOT_FOUND"
+        message:
+          type: string
+          example: "Không tìm thấy từ vựng"
+        details:
+          type: object
+          additionalProperties: true
+
+    ErrorResponse:
+      type: object
+      required: [success, meta]
+      properties:
+        success:
+          type: boolean
+          enum: [false]
+        error:
+          $ref: "#/components/schemas/ErrorObject"
+        meta:
+          $ref: "#/components/schemas/Meta"
+
+    # ── Auth ──────────────────────────────────────────────
+    AuthMeResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        prep_user_id:
+          type: integer
+          format: int64
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        is_first_login:
+          type: boolean
+        force_update_password:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    # ── Language ──────────────────────────────────────────
+    LanguageResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        code:
+          type: string
+          example: "zh"
+        name_en:
+          type: string
+          example: "Chinese"
+        name_native:
+          type: string
+          example: "中文"
+        is_active:
+          type: boolean
+        config:
+          type: object
+          additionalProperties: true
+
+    # ── Category ──────────────────────────────────────────
+    CategoryResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        language_id:
+          type: string
+          format: uuid
+        code:
+          type: string
+          example: "hsk"
+        name:
+          type: string
+          example: "HSK"
+        is_public:
+          type: boolean
+
+    # ── Proficiency Level ─────────────────────────────────
+    ProficiencyLevelResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        category_id:
+          type: string
+          format: uuid
+        code:
+          type: string
+          example: "hsk1"
+        name:
+          type: string
+          example: "HSK 1"
+        target:
+          type: number
+          format: double
+        display_target:
+          type: string
+        offset:
+          type: integer
+
+    # ── Topic ─────────────────────────────────────────────
+    TopicResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        category_id:
+          type: string
+          format: uuid
+        slug:
+          type: string
+          example: "animals"
+        names:
+          type: object
+          additionalProperties:
+            type: string
+          example:
+            en: "Animals"
+            vi: "Động vật"
+        offset:
+          type: integer
+
+    # ── Grammar Point ─────────────────────────────────────
+    GrammarPointResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        category_id:
+          type: string
+          format: uuid
+        proficiency_level_id:
+          type: string
+          format: uuid
+        code:
+          type: string
+        pattern:
+          type: string
+        examples:
+          type: object
+          additionalProperties: true
+        rule:
+          type: object
+          additionalProperties: true
+        common_mistakes:
+          type: object
+          additionalProperties: true
+
+    # ── Vocabulary ────────────────────────────────────────
+    MeaningExampleRequest:
+      type: object
+      required: [sentence]
+      properties:
+        sentence:
+          type: string
+        phonetic:
+          type: string
+        translations:
+          type: object
+          additionalProperties:
+            type: string
+        audio_url:
+          type: string
+
+    MeaningRequest:
+      type: object
+      required: [language_id, meaning]
+      properties:
+        language_id:
+          type: string
+          format: uuid
+        meaning:
+          type: string
+        word_type:
+          type: string
+        is_primary:
+          type: boolean
+        examples:
+          type: array
+          items:
+            $ref: "#/components/schemas/MeaningExampleRequest"
+
+    CreateVocabularyRequest:
+      type: object
+      required: [language_id, word, meanings]
+      properties:
+        language_id:
+          type: string
+          format: uuid
+        proficiency_level_id:
+          type: string
+          format: uuid
+        word:
+          type: string
+        phonetic:
+          type: string
+        audio_url:
+          type: string
+        image_url:
+          type: string
+        frequency_rank:
+          type: integer
+        metadata:
+          type: object
+          additionalProperties: true
+        meanings:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/MeaningRequest"
+
+    UpdateVocabularyRequest:
+      type: object
+      required: [language_id, word, meanings]
+      properties:
+        language_id:
+          type: string
+          format: uuid
+        proficiency_level_id:
+          type: string
+          format: uuid
+        word:
+          type: string
+        phonetic:
+          type: string
+        audio_url:
+          type: string
+        image_url:
+          type: string
+        frequency_rank:
+          type: integer
+        metadata:
+          type: object
+          additionalProperties: true
+        meanings:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/MeaningRequest"
+        topic_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+        grammar_point_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+
+    MeaningExampleResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        sentence:
+          type: string
+        phonetic:
+          type: string
+        translations:
+          type: object
+          additionalProperties:
+            type: string
+        audio_url:
+          type: string
+
+    MeaningResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        language_id:
+          type: string
+          format: uuid
+        meaning:
+          type: string
+        word_type:
+          type: string
+        is_primary:
+          type: boolean
+        offset:
+          type: integer
+        examples:
+          type: array
+          items:
+            $ref: "#/components/schemas/MeaningExampleResponse"
+
+    MeaningListResponse:
+      type: object
+      properties:
+        language_id:
+          type: string
+          format: uuid
+        meaning:
+          type: string
+        word_type:
+          type: string
+
+    VocabularyResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        language_id:
+          type: string
+          format: uuid
+        proficiency_level_id:
+          type: string
+          format: uuid
+        word:
+          type: string
+        phonetic:
+          type: string
+        audio_url:
+          type: string
+        image_url:
+          type: string
+        frequency_rank:
+          type: integer
+        metadata:
+          type: object
+          additionalProperties: true
+        meanings:
+          type: array
+          items:
+            $ref: "#/components/schemas/MeaningResponse"
+        created_at:
+          type: string
+          format: date-time
+
+    VocabularyDetailResponse:
+      allOf:
+        - $ref: "#/components/schemas/VocabularyResponse"
+        - type: object
+          properties:
+            topics:
+              type: array
+              items:
+                $ref: "#/components/schemas/TopicResponse"
+            grammar_points:
+              type: array
+              items:
+                $ref: "#/components/schemas/GrammarPointResponse"
+
+    VocabularyListResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        word:
+          type: string
+        phonetic:
+          type: string
+        meanings:
+          type: array
+          items:
+            $ref: "#/components/schemas/MeaningListResponse"
+        proficiency_level_id:
+          type: string
+          format: uuid
+        frequency_rank:
+          type: integer
+
+    # ── Folder ────────────────────────────────────────────
+    CreateFolderRequest:
+      type: object
+      required: [language_id, name]
+      properties:
+        language_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+
+    UpdateFolderRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+
+    FolderResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        language_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        vocabulary_count:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+
+    FolderVocabularyRequest:
+      type: object
+      required: [vocabulary_id]
+      properties:
+        vocabulary_id:
+          type: string
+          format: uuid
+
+    # ── Association ───────────────────────────────────────
+    SetTopicsRequest:
+      type: object
+      required: [topic_ids]
+      properties:
+        topic_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+
+    SetGrammarPointsRequest:
+      type: object
+      required: [grammar_point_ids]
+      properties:
+        grammar_point_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+
+    # ── OCR ───────────────────────────────────────────────
+    OCRScanResponse:
+      type: object
+      properties:
+        new_items:
+          type: array
+          items:
+            $ref: "#/components/schemas/OCRScanCharacterItem"
+        existing_items:
+          type: array
+          items:
+            $ref: "#/components/schemas/OCRScanExistingItem"
+        low_confidence:
+          type: array
+          items:
+            $ref: "#/components/schemas/OCRScanCharacterItem"
+        metadata:
+          $ref: "#/components/schemas/OCRScanMetadata"
+
+    OCRScanCharacterItem:
+      type: object
+      properties:
+        text:
+          type: string
+        pronunciation:
+          type: string
+        confidence:
+          type: number
+          format: double
+        candidates:
+          type: array
+          items:
+            type: string
+
+    OCRScanExistingItem:
+      type: object
+      properties:
+        text:
+          type: string
+        pronunciation:
+          type: string
+        confidence:
+          type: number
+          format: double
+        candidates:
+          type: array
+          items:
+            type: string
+        vocabulary_id:
+          type: string
+          format: uuid
+
+    OCRScanMetadata:
+      type: object
+      properties:
+        engine_used:
+          type: string
+        total_detected:
+          type: integer
+        processing_time_ms:
+          type: integer
+          format: int64
+
+    # ── Bulk Import ───────────────────────────────────────
+    BulkImportRequest:
+      type: object
+      required: [vocabularies]
+      properties:
+        vocabularies:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/CreateVocabularyRequest"
+
+    BulkImportResponse:
+      type: object
+      properties:
+        imported:
+          type: integer
+        skipped:
+          type: integer
+        total:
+          type: integer
+
+  parameters:
+    LangQuery:
+      name: lang
+      in: query
+      description: Language for i18n (en, vi, zh, th, id)
+      schema:
+        type: string
+        enum: [en, vi, zh, th, id]
+    XLangHeader:
+      name: X-Lang
+      in: header
+      description: Language for i18n
+      schema:
+        type: string
+    PageParam:
+      name: page
+      in: query
+      schema:
+        type: integer
+        default: 1
+        minimum: 1
+    PageSizeParam:
+      name: page_size
+      in: query
+      schema:
+        type: integer
+        default: 10
+        minimum: 1
+        maximum: 100
+
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Conflict:
+      description: Conflict / duplicate
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    ValidationError:
+      description: Validation failed (422)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    TooManyRequests:
+      description: Rate limit exceeded
+      headers:
+        X-RateLimit-Limit:
+          schema:
+            type: integer
+        X-RateLimit-Remaining:
+          schema:
+            type: integer
+        Retry-After:
+          schema:
+            type: integer
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+paths:
+  # ── Health ────────────────────────────────────────────
+  /health:
+    get:
+      tags: [Health]
+      summary: Health check
+      operationId: healthCheck
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "healthy"
+        "503":
+          description: Unhealthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "unhealthy"
+                  error:
+                    type: string
+
+  # ── Auth ──────────────────────────────────────────────
+  /api/v1/auth/me:
+    get:
+      tags: [Auth]
+      summary: Get authenticated user profile
+      operationId: getMe
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: User profile
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, meta]
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    $ref: "#/components/schemas/AuthMeResponse"
+                  meta:
+                    $ref: "#/components/schemas/Meta"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  # ── Languages ─────────────────────────────────────────
+  /api/v1/languages:
+    get:
+      tags: [Languages]
+      summary: List all languages
+      operationId: listLanguages
+      parameters:
+        - name: active_only
+          in: query
+          schema:
+            type: boolean
+      responses:
+        "200":
+          description: List of languages
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, meta]
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/LanguageResponse"
+                  meta:
+                    $ref: "#/components/schemas/Meta"
+
+  /api/v1/languages/{id}:
+    get:
+      tags: [Languages]
+      summary: Get a language by ID
+      operationId: getLanguage
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Language detail
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, meta]
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    $ref: "#/components/schemas/LanguageResponse"
+                  meta:
+                    $ref: "#/components/schemas/Meta"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # ── Categories ────────────────────────────────────────
+  /api/v1/categories:
+    get:
+      tags: [Categories]
+      summary: List categories
+      operationId: listCategories
+      parameters:
+        - name: language_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: is_public
+          in: query
+          schema:
+            type: boolean
+      responses:
+        "200":
+          description: List of categories
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, meta]
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/CategoryResponse"
+                  meta:
+                    $ref: "#/components/schemas/Meta"
+
+  /api/v1/categories/{id}:
+    get:
+      tags: [Categories]
+      summary: Get a category by ID
+      operationId: getCategory
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Category detail
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, meta]
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    $ref: "#/components/schemas/CategoryResponse"
+                  meta:
+                    $ref: "#/components/schemas/Meta"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # ── Proficiency Levels ────────────────────────────────
+  /api/v1/proficiency-levels:
+    get:
+      tags: [Proficiency Levels]
+      summary: List proficiency levels
+      operationId: listProficiencyLevels
+      parameters:
+        - name: category_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: List of proficiency levels
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, meta]
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ProficiencyLevelResponse"
+                  meta:
+                    $ref: "#/components/schemas/Meta"
+
+  /api/v1/proficiency-levels/{id}:
+    get:
+      tags: [Proficiency Levels]
+      summary: Get a proficiency level by ID
+      operationId: getProficiencyLevel
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Proficiency level detail
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, meta]
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    $ref: "#/components/schemas/ProficiencyLevelResponse"
+                  meta:
+                    $ref: "#/components/schemas/Meta"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # ── Topics ────────────────────────────────────────────
+  /api/v1/topics:
+    get:
+      tags: [Topics]
+      summary: List topics
+      operationId: listTopics
+      parameters:
+        - name: category_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: List of topics
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, meta]
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/TopicResponse"
+                  meta:
+                    $ref: "#/components/schemas/Meta"
+
+  /api/v1/topics/{id}:
+    get:
+      tags: [Topics]
+      summary: Get a topic by ID
+      operationId: getTopic
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Topic detail
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, meta]
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    $ref: "#/components/schemas/TopicResponse"
+                  meta:
+                    $ref: "#/components/schemas/Meta"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # ── Grammar Points ────────────────────────────────────
+  /api/v1/grammar-points:
+    get:
+      tags: [Grammar Points]
+      summary: List grammar points
+      operationId: listGrammarPoints
+      parameters:
+        - name: category_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: proficiency_level_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/PageSizeParam"
+      responses:
+        "200":
+          description: Paginated list of grammar points
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, meta]
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/GrammarPointResponse"
+                  meta:
+                    $ref: "#/components/schemas/Meta"
+
+  /api/v1/grammar-points/{id}:
+    get:
+      tags: [Grammar Points]
+      summary: Get a grammar point by ID
+      operationId: getGrammarPoint
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Grammar point detail
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, meta]
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    $ref: "#/components/schemas/GrammarPointResponse"
+                  meta:
+                    $ref: "#/components/schemas/Meta"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # ── Vocabularies ──────────────────────────────────────
+  /api/v1/vocabularies:
+    post:
+      tags: [Vocabularies]
+      summary: Create a vocabulary
+      operationId: createVocabulary
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateVocabularyRequest"
+      responses:
+        "201":
+          description: Vocabulary created
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, meta]
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    $ref: "#/components/schemas/VocabularyResponse"
+                  meta:
+                    $ref: "#/components/schemas/Meta"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+    get:
+      tags: [Vocabularies]
+      summary: List vocabularies with pagination
+      operationId: listVocabularies
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: language_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: proficiency_level_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: topic_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: meaning_lang
+          in: query
+          description: Filter meanings by language code
+          schema:
+            type: string
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/PageSizeParam"
+      responses:
+        "200":
+          description: Paginated list of vocabularies
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, meta]
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/VocabularyListResponse"
+                  meta:
+                    $ref: "#/components/schemas/Meta"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/vocabularies/search:
+    get:
+      tags: [Vocabularies]
+      summary: Search vocabularies by query
+      operationId: searchVocabularies
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: q
+          in: query
+          required: true
+          description: Search query
+          schema:
+            type: string
+        - name: language_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: meaning_lang
+          in: query
+          schema:
+            type: string
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/PageSizeParam"
+      responses:
+        "200":
+          description: Search results
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, meta]
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/VocabularyListResponse"
+                  meta:
+                    $ref: "#/components/schemas/Meta"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/vocabularies/{id}:
+    get:
+      tags: [Vocabularies]
+      summary: Get a vocabulary by ID
+      operationId: getVocabulary
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Vocabulary detail
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, meta]
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    $ref: "#/components/schemas/VocabularyResponse"
+                  meta:
+                    $ref: "#/components/schemas/Meta"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      tags: [Vocabularies]
+      summary: Update a vocabulary
+      operationId: updateVocabulary
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateVocabularyRequest"
+      responses:
+        "200":
+          description: Vocabulary updated
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, meta]
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    $ref: "#/components/schemas/VocabularyResponse"
+                  meta:
+                    $ref: "#/components/schemas/Meta"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+    delete:
+      tags: [Vocabularies]
+      summary: Delete a vocabulary
+      operationId: deleteVocabulary
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "204":
+          description: Vocabulary deleted
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/vocabularies/{id}/detail:
+    get:
+      tags: [Vocabularies]
+      summary: Get vocabulary with topics and grammar points
+      operationId: getVocabularyDetail
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Vocabulary with related topics and grammar points
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, meta]
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    $ref: "#/components/schemas/VocabularyDetailResponse"
+                  meta:
+                    $ref: "#/components/schemas/Meta"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/vocabularies/{id}/topics:
+    put:
+      tags: [Vocabularies]
+      summary: Set topics for a vocabulary
+      operationId: setVocabularyTopics
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SetTopicsRequest"
+      responses:
+        "200":
+          description: Topics updated
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, meta]
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    $ref: "#/components/schemas/VocabularyDetailResponse"
+                  meta:
+                    $ref: "#/components/schemas/Meta"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/vocabularies/{id}/grammar-points:
+    put:
+      tags: [Vocabularies]
+      summary: Set grammar points for a vocabulary
+      operationId: setVocabularyGrammarPoints
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SetGrammarPointsRequest"
+      responses:
+        "200":
+          description: Grammar points updated
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, meta]
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    $ref: "#/components/schemas/VocabularyDetailResponse"
+                  meta:
+                    $ref: "#/components/schemas/Meta"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # ── OCR ───────────────────────────────────────────────
+  /api/v1/vocabularies/ocr-scan:
+    post:
+      tags: [OCR]
+      summary: Process OCR scan on uploaded image
+      operationId: ocrScan
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [image]
+              properties:
+                image:
+                  type: string
+                  format: binary
+                  description: Image file (max 10MB)
+                type:
+                  type: string
+                  enum: [printed, handwritten, auto]
+                language:
+                  type: string
+                  description: Language code (e.g. zh)
+                engine:
+                  type: string
+                  enum: [paddleocr, tesseract, google_vision, baidu_ocr]
+      responses:
+        "200":
+          description: OCR scan results
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, meta]
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    $ref: "#/components/schemas/OCRScanResponse"
+                  meta:
+                    $ref: "#/components/schemas/Meta"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  # ── Admin: Bulk Import ────────────────────────────────
+  /api/v1/admin/vocabularies/import:
+    post:
+      tags: [Admin]
+      summary: Bulk import vocabularies
+      operationId: bulkImportVocabularies
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BulkImportRequest"
+      responses:
+        "200":
+          description: Import result
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, meta]
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    $ref: "#/components/schemas/BulkImportResponse"
+                  meta:
+                    $ref: "#/components/schemas/Meta"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+
+  # ── Folders ───────────────────────────────────────────
+  /api/v1/folders:
+    post:
+      tags: [Folders]
+      summary: Create a folder
+      operationId: createFolder
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateFolderRequest"
+      responses:
+        "201":
+          description: Folder created
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, meta]
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    $ref: "#/components/schemas/FolderResponse"
+                  meta:
+                    $ref: "#/components/schemas/Meta"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          $ref: "#/components/responses/Conflict"
+    get:
+      tags: [Folders]
+      summary: List user's folders
+      operationId: listFolders
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: language_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: List of folders
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, meta]
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/FolderResponse"
+                  meta:
+                    $ref: "#/components/schemas/Meta"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/folders/{id}:
+    put:
+      tags: [Folders]
+      summary: Update a folder
+      operationId: updateFolder
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateFolderRequest"
+      responses:
+        "200":
+          description: Folder updated
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, meta]
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    $ref: "#/components/schemas/FolderResponse"
+                  meta:
+                    $ref: "#/components/schemas/Meta"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      tags: [Folders]
+      summary: Delete a folder
+      operationId: deleteFolder
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "204":
+          description: Folder deleted
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/folders/{id}/vocabularies:
+    post:
+      tags: [Folders]
+      summary: Add vocabulary to folder
+      operationId: addVocabularyToFolder
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FolderVocabularyRequest"
+      responses:
+        "200":
+          description: Vocabulary added to folder
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, meta]
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  meta:
+                    $ref: "#/components/schemas/Meta"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+    get:
+      tags: [Folders]
+      summary: List vocabularies in folder
+      operationId: listFolderVocabularies
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: meaning_lang
+          in: query
+          schema:
+            type: string
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/PageSizeParam"
+      responses:
+        "200":
+          description: Paginated list of vocabularies in folder
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, meta]
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/VocabularyListResponse"
+                  meta:
+                    $ref: "#/components/schemas/Meta"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/folders/{id}/vocabularies/{vocab_id}:
+    delete:
+      tags: [Folders]
+      summary: Remove vocabulary from folder
+      operationId: removeVocabularyFromFolder
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: vocab_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "204":
+          description: Vocabulary removed from folder
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"

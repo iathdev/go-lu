@@ -30,7 +30,7 @@ func (useCase *CategoryQuery) ListCategories(ctx context.Context, languageID str
 
 	categories, err := useCase.categoryRepo.FindAll(ctx, langIDPtr, isPublic)
 	if err != nil {
-		return nil, apperr.InternalServerError("category.query_failed", err)
+		return nil, apperr.InternalServerError("common.internal_server_error", err)
 	}
 
 	result := make([]*vdto.CategoryResponse, 0, len(categories))
@@ -48,7 +48,7 @@ func (useCase *CategoryQuery) GetCategory(ctx context.Context, id string) (*vdto
 
 	cat, err := useCase.categoryRepo.FindByID(ctx, catID)
 	if err != nil {
-		return nil, apperr.InternalServerError("category.query_failed", err)
+		return nil, apperr.InternalServerError("common.internal_server_error", err)
 	}
 	if cat == nil {
 		return nil, apperr.NotFound("category.not_found")

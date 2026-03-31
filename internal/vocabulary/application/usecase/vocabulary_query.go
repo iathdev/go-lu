@@ -40,7 +40,7 @@ func (useCase *VocabularyQuery) GetVocabulary(ctx context.Context, id string, _ 
 
 	vocab, err := useCase.vocabRepo.FindByID(ctx, vocabID)
 	if err != nil {
-		return nil, apperr.InternalServerError("vocabulary.query_failed", err)
+		return nil, apperr.InternalServerError("common.internal_server_error", err)
 	}
 	if vocab == nil {
 		return nil, apperr.NotFound("vocabulary.not_found")
@@ -57,7 +57,7 @@ func (useCase *VocabularyQuery) GetVocabularyDetail(ctx context.Context, id stri
 
 	vocab, err := useCase.vocabRepo.FindByID(ctx, vocabID)
 	if err != nil {
-		return nil, apperr.InternalServerError("vocabulary.query_failed", err)
+		return nil, apperr.InternalServerError("common.internal_server_error", err)
 	}
 	if vocab == nil {
 		return nil, apperr.NotFound("vocabulary.not_found")
@@ -129,12 +129,12 @@ func (useCase *VocabularyQuery) ListVocabularies(ctx context.Context, filter vdt
 
 	total, err := useCase.vocabRepo.CountAll(ctx, langIDPtr, profLevelIDPtr, topicIDPtr)
 	if err != nil {
-		return nil, apperr.InternalServerError("vocabulary.query_failed", err)
+		return nil, apperr.InternalServerError("common.internal_server_error", err)
 	}
 
 	vocabs, err := useCase.vocabRepo.FindAll(ctx, langIDPtr, profLevelIDPtr, topicIDPtr, offset, pagination.PageSize)
 	if err != nil {
-		return nil, apperr.InternalServerError("vocabulary.query_failed", err)
+		return nil, apperr.InternalServerError("common.internal_server_error", err)
 	}
 
 	return mapper.ToPaginatedListResult(vocabs, total, pagination), nil
@@ -155,12 +155,12 @@ func (useCase *VocabularyQuery) SearchVocabulary(ctx context.Context, query stri
 
 	total, err := useCase.vocabRepo.CountSearch(ctx, query, langIDPtr)
 	if err != nil {
-		return nil, apperr.InternalServerError("vocabulary.query_failed", err)
+		return nil, apperr.InternalServerError("common.internal_server_error", err)
 	}
 
 	vocabs, err := useCase.vocabRepo.Search(ctx, query, langIDPtr, offset, pagination.PageSize)
 	if err != nil {
-		return nil, apperr.InternalServerError("vocabulary.query_failed", err)
+		return nil, apperr.InternalServerError("common.internal_server_error", err)
 	}
 
 	return mapper.ToPaginatedListResult(vocabs, total, pagination), nil

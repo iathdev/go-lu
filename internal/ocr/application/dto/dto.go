@@ -1,12 +1,5 @@
 package dto
 
-type OCRScanHTTPRequest struct {
-	ImageURL string `json:"image_url" binding:"required,url"`
-	Type     string `json:"type" binding:"omitempty,oneof=printed handwritten auto"`
-	Language string `json:"language" binding:"omitempty,oneof=zh vi en"`
-	Engine   string `json:"engine" binding:"omitempty,oneof=paddleocr tesseract google_vision baidu_ocr"`
-}
-
 type OCRScanRequest struct {
 	Image    []byte
 	Type     string // "printed" | "handwritten" | "auto"
@@ -16,9 +9,9 @@ type OCRScanRequest struct {
 
 type OCRCharacterItem struct {
 	Text          string   `json:"text"`
-	Pronunciation string   `json:"pronunciation,omitempty"`
+	Pronunciation string   `json:"pronunciation"`
 	Confidence    float64  `json:"confidence"`
-	Candidates    []string `json:"candidates,omitempty"`
+	Candidates    []string `json:"candidates"`
 }
 
 type OCRScanMetadata struct {
@@ -28,7 +21,7 @@ type OCRScanMetadata struct {
 }
 
 type OCRScanResponse struct {
-	Items            []OCRCharacterItem `json:"items"`
-	LowConfidence    []OCRCharacterItem `json:"low_confidence"`
-	Metadata         OCRScanMetadata    `json:"metadata"`
+	Items         []OCRCharacterItem `json:"items"`
+	LowConfidence []OCRCharacterItem `json:"low_confidence"`
+	Metadata      OCRScanMetadata    `json:"metadata"`
 }

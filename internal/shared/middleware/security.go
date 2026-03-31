@@ -1,6 +1,10 @@
 package middleware
 
-import "github.com/gin-gonic/gin"
+import (
+	"strings"
+
+	"github.com/gin-gonic/gin"
+)
 
 func SecurityHeadersMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -13,7 +17,11 @@ func SecurityHeadersMiddleware() gin.HandlerFunc {
 			c.Header("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
 		}
 
-		c.Header("Content-Security-Policy", "default-src 'self'")
+		if strings.HasPrefix(c.Request.URL.Path, "/docs") {
+			c.Header("Content-Security-Policy", "default-src 'self'; script-src 'unsafe-inline' https://unpkg.com; style-src 'unsafe-inline' https://unpkg.com; img-src 'self' data: https://unpkg.com")
+		} else {
+			c.Header("Content-Security-Policy", "default-src 'self'")
+		}
 		c.Next()
 	}
 }

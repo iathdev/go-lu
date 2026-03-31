@@ -5,6 +5,7 @@ import (
 
 	apperr "learning-go/internal/shared/error"
 	vdto "learning-go/internal/vocabulary/application/dto"
+	"learning-go/internal/vocabulary/application/mapper"
 	"learning-go/internal/vocabulary/application/port"
 	"learning-go/internal/vocabulary/domain"
 )
@@ -50,7 +51,7 @@ func (useCase *ImportCommand) ImportVocabularies(ctx context.Context, req vdto.B
 	for key, group := range groupMap {
 		existing, err := useCase.vocabRepo.FindByWordList(ctx, group.languageID, group.words)
 		if err != nil {
-			return nil, apperr.InternalServerError("import.check_existing_failed", err)
+			return nil, apperr.InternalServerError("common.internal_server_error", err)
 		}
 		wordSet := make(map[string]bool, len(existing))
 		for _, vocab := range existing {
@@ -70,11 +71,15 @@ func (useCase *ImportCommand) ImportVocabularies(ctx context.Context, req vdto.B
 				continue
 			}
 
-			params := toVocabularyParams(
+			params, parseErr := mapper.ToVocabularyParams(
 				item.LanguageID, item.ProficiencyLevelID, item.Word,
 				item.Phonetic, item.AudioURL, item.ImageURL,
 				item.FrequencyRank, item.Metadata, item.Meanings,
 			)
+			if parseErr != nil {
+				skipped++
+				continue
+			}
 
 			vocab, err := domain.NewVocabularyFromParams(params)
 			if err != nil {
@@ -90,7 +95,7 @@ func (useCase *ImportCommand) ImportVocabularies(ctx context.Context, req vdto.B
 		var err error
 		imported, err = useCase.vocabRepo.SaveBatch(ctx, newVocabs)
 		if err != nil {
-			return nil, apperr.InternalServerError("import.save_failed", err)
+			return nil, apperr.InternalServerError("common.internal_server_error", err)
 		}
 	}
 

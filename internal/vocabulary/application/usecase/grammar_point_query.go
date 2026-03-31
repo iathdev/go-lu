@@ -43,12 +43,12 @@ func (useCase *GrammarPointQuery) ListGrammarPoints(ctx context.Context, categor
 
 	total, err := useCase.grammarRepo.CountAll(ctx, catIDPtr, profLevelIDPtr)
 	if err != nil {
-		return nil, apperr.InternalServerError("grammar_point.query_failed", err)
+		return nil, apperr.InternalServerError("common.internal_server_error", err)
 	}
 
 	grammarPoints, err := useCase.grammarRepo.FindAll(ctx, catIDPtr, profLevelIDPtr, offset, pagination.PageSize)
 	if err != nil {
-		return nil, apperr.InternalServerError("grammar_point.query_failed", err)
+		return nil, apperr.InternalServerError("common.internal_server_error", err)
 	}
 
 	items := make([]*vdto.GrammarPointResponse, 0, len(grammarPoints))
@@ -79,7 +79,7 @@ func (useCase *GrammarPointQuery) GetGrammarPoint(ctx context.Context, id string
 
 	grammarPoint, err := useCase.grammarRepo.FindByID(ctx, gpID)
 	if err != nil {
-		return nil, apperr.InternalServerError("grammar_point.query_failed", err)
+		return nil, apperr.InternalServerError("common.internal_server_error", err)
 	}
 	if grammarPoint == nil {
 		return nil, apperr.NotFound("grammar_point.not_found")

@@ -21,7 +21,7 @@ func NewLanguageQuery(languageRepo port.LanguageRepositoryPort) port.LanguageQue
 func (useCase *LanguageQuery) ListLanguages(ctx context.Context, activeOnly bool) ([]*vdto.LanguageResponse, error) {
 	languages, err := useCase.languageRepo.FindAll(ctx, activeOnly)
 	if err != nil {
-		return nil, apperr.InternalServerError("language.query_failed", err)
+		return nil, apperr.InternalServerError("common.internal_server_error", err)
 	}
 
 	result := make([]*vdto.LanguageResponse, 0, len(languages))
@@ -39,7 +39,7 @@ func (useCase *LanguageQuery) GetLanguage(ctx context.Context, id string) (*vdto
 
 	lang, err := useCase.languageRepo.FindByID(ctx, langID)
 	if err != nil {
-		return nil, apperr.InternalServerError("language.query_failed", err)
+		return nil, apperr.InternalServerError("common.internal_server_error", err)
 	}
 	if lang == nil {
 		return nil, apperr.NotFound("language.not_found")

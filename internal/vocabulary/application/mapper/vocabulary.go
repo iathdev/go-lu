@@ -8,6 +8,91 @@ import (
 	"learning-go/internal/vocabulary/domain"
 )
 
+// ToVocabularyParams parses DTO fields into typed domain VocabularyParams.
+func ToVocabularyParams(
+	languageID, proficiencyLevelID, word, phonetic, audioURL, imageURL string,
+	frequencyRank int,
+	metadata map[string]any,
+	meanings []vdto.MeaningDTO,
+) (domain.VocabularyParams, error) {
+	langID, err := domain.ParseLanguageID(languageID)
+	if err != nil {
+		return domain.VocabularyParams{}, domain.ErrInvalidLanguageID
+	}
+
+	var plID domain.ProficiencyLevelID
+	if proficiencyLevelID != "" {
+		plID, err = domain.ParseProficiencyLevelID(proficiencyLevelID)
+		if err != nil {
+			return domain.VocabularyParams{}, domain.ErrInvalidProficiencyLevelID
+		}
+	}
+
+	meaningParams := make([]domain.MeaningParams, 0, len(meanings))
+	for _, meaning := range meanings {
+		mLangID, parseErr := domain.ParseLanguageID(meaning.LanguageID)
+		if parseErr != nil {
+			return domain.VocabularyParams{}, domain.ErrInvalidLanguageID
+		}
+
+		exampleParams := make([]domain.ExampleParams, 0, len(meaning.Examples))
+		for _, example := range meaning.Examples {
+			exampleParams = append(exampleParams, domain.ExampleParams{
+				Sentence:     example.Sentence,
+				Phonetic:     example.Phonetic,
+				Translations: example.Translations,
+				AudioURL:     example.AudioURL,
+			})
+		}
+
+		meaningParams = append(meaningParams, domain.MeaningParams{
+			LanguageID: mLangID,
+			Meaning:    meaning.Meaning,
+			WordType:   meaning.WordType,
+			IsPrimary:  meaning.IsPrimary,
+			Examples:   exampleParams,
+		})
+	}
+
+	return domain.VocabularyParams{
+		LanguageID:         langID,
+		ProficiencyLevelID: plID,
+		Word:               word,
+		Phonetic:           phonetic,
+		AudioURL:           audioURL,
+		ImageURL:           imageURL,
+		FrequencyRank:      frequencyRank,
+		Metadata:           metadata,
+		Meanings:           meaningParams,
+	}, nil
+}
+
+// ParseTopicIDs converts string IDs to domain TopicIDs.
+func ParseTopicIDs(ids []string) ([]domain.TopicID, error) {
+	result := make([]domain.TopicID, 0, len(ids))
+	for _, id := range ids {
+		parsed, err := domain.ParseTopicID(id)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, parsed)
+	}
+	return result, nil
+}
+
+// ParseGrammarPointIDs converts string IDs to domain GrammarPointIDs.
+func ParseGrammarPointIDs(ids []string) ([]domain.GrammarPointID, error) {
+	result := make([]domain.GrammarPointID, 0, len(ids))
+	for _, id := range ids {
+		parsed, err := domain.ParseGrammarPointID(id)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, parsed)
+	}
+	return result, nil
+}
+
 // ToVocabularyResponse maps domain.Vocabulary to VocabularyResponse with Meanings[].Examples[].
 func ToVocabularyResponse(vocab *domain.Vocabulary) *vdto.VocabularyResponse {
 	meanings := make([]vdto.MeaningResponse, 0, len(vocab.Meanings))

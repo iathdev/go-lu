@@ -23,7 +23,7 @@ func getOwnedFolder(ctx context.Context, folderRepo port.FolderRepositoryPort, i
 
 	folder, err := folderRepo.FindByID(ctx, fid)
 	if err != nil {
-		return nil, apperr.InternalServerError("folder.query_failed", err)
+		return nil, apperr.InternalServerError("common.internal_server_error", err)
 	}
 	if folder == nil {
 		return nil, apperr.NotFound("folder.not_found")
@@ -48,36 +48,16 @@ func normalizePagination(pagination *dto.PaginationRequest) {
 	}
 }
 
-func parseTopicIDs(ids []string) ([]domain.TopicID, error) {
-	result := make([]domain.TopicID, 0, len(ids))
-	for _, id := range ids {
-		parsed, err := domain.ParseTopicID(id)
-		if err != nil {
-			return nil, err
-		}
-		result = append(result, parsed)
-	}
-	return result, nil
-}
-
-func parseGrammarPointIDs(ids []string) ([]domain.GrammarPointID, error) {
-	result := make([]domain.GrammarPointID, 0, len(ids))
-	for _, id := range ids {
-		parsed, err := domain.ParseGrammarPointID(id)
-		if err != nil {
-			return nil, err
-		}
-		result = append(result, parsed)
-	}
-	return result, nil
-}
-
 func mapVocabEntityError(err error) error {
 	switch {
 	case errors.Is(err, domain.ErrWordRequired):
 		return apperr.ValidationFailed("vocabulary.word_required")
 	case errors.Is(err, domain.ErrMeaningRequired):
 		return apperr.ValidationFailed("vocabulary.meaning_required")
+	case errors.Is(err, domain.ErrInvalidLanguageID):
+		return apperr.BadRequest("vocabulary.invalid_language_id")
+	case errors.Is(err, domain.ErrInvalidProficiencyLevelID):
+		return apperr.BadRequest("vocabulary.invalid_proficiency_level_id")
 	default:
 		return apperr.InternalServerError("common.internal_server_error", err)
 	}

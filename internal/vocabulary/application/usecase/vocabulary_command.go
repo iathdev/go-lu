@@ -25,7 +25,10 @@ func NewVocabularyCommand(
 }
 
 func (useCase *VocabularyCommand) CreateVocabulary(ctx context.Context, req vdto.CreateVocabularyRequest) (*vdto.VocabularyResponse, error) {
-	params := toVocabularyParams(req.LanguageID, req.ProficiencyLevelID, req.Word, req.Phonetic, req.AudioURL, req.ImageURL, req.FrequencyRank, req.Metadata, req.Meanings)
+	params, err := mapper.ToVocabularyParams(req.LanguageID, req.ProficiencyLevelID, req.Word, req.Phonetic, req.AudioURL, req.ImageURL, req.FrequencyRank, req.Metadata, req.Meanings)
+	if err != nil {
+		return nil, mapVocabEntityError(err)
+	}
 
 	vocab, err := domain.NewVocabularyFromParams(params)
 	if err != nil {
@@ -33,7 +36,7 @@ func (useCase *VocabularyCommand) CreateVocabulary(ctx context.Context, req vdto
 	}
 
 	if err := useCase.vocabRepo.Save(ctx, vocab); err != nil {
-		return nil, apperr.InternalServerError("vocabulary.save_failed", err)
+		return nil, apperr.InternalServerError("common.internal_server_error", err)
 	}
 
 	return mapper.ToVocabularyResponse(vocab), nil
@@ -47,65 +50,68 @@ func (useCase *VocabularyCommand) UpdateVocabulary(ctx context.Context, id strin
 
 	existing, err := useCase.vocabRepo.FindByID(ctx, vocabID)
 	if err != nil {
-		return nil, apperr.InternalServerError("vocabulary.query_failed", err)
+		return nil, apperr.InternalServerError("common.internal_server_error", err)
 	}
+
 	if existing == nil {
 		return nil, apperr.NotFound("vocabulary.not_found")
 	}
 
-	params := toVocabularyParams(req.LanguageID, req.ProficiencyLevelID, req.Word, req.Phonetic, req.AudioURL, req.ImageURL, req.FrequencyRank, req.Metadata, req.Meanings)
-
-	vocab, err := domain.NewVocabularyFromParams(params)
+	params, err := mapper.ToVocabularyParams(req.LanguageID, req.ProficiencyLevelID, req.Word, req.Phonetic, req.AudioURL, req.ImageURL, req.FrequencyRank, req.Metadata, req.Meanings)
 	if err != nil {
 		return nil, mapVocabEntityError(err)
 	}
 
-	// Preserve original ID and timestamps
-	vocab.ID = existing.ID
-	vocab.CreatedAt = existing.CreatedAt
-	vocab.UpdatedAt = existing.UpdatedAt
+	if err := existing.Update(params); err != nil {
+		return nil, mapVocabEntityError(err)
+	}
 
-	if err := useCase.vocabRepo.Update(ctx, vocab); err != nil {
-		return nil, apperr.InternalServerError("vocabulary.update_failed", err)
+	if err := useCase.vocabRepo.Update(ctx, existing); err != nil {
+		return nil, apperr.InternalServerError("common.internal_server_error", err)
 	}
 
 	// Set topics if provided
 	if req.TopicIDs != nil {
-		topicIDs, parseErr := parseTopicIDs(req.TopicIDs)
+		topicIDs, parseErr := mapper.ParseTopicIDs(req.TopicIDs)
 		if parseErr != nil {
 			return nil, apperr.BadRequest("vocabulary.invalid_topic_id")
 		}
+
 		found, findErr := useCase.topicRepo.FindByIDs(ctx, topicIDs)
 		if findErr != nil {
-			return nil, apperr.InternalServerError("topic.query_failed", findErr)
+			return nil, apperr.InternalServerError("common.internal_server_error", findErr)
 		}
+
 		if len(found) != len(topicIDs) {
 			return nil, apperr.BadRequest("vocabulary.invalid_topic_id")
 		}
-		if err := useCase.vocabRepo.SetTopics(ctx, vocab.ID, topicIDs); err != nil {
-			return nil, apperr.InternalServerError("vocabulary.set_topics_failed", err)
+
+		existing.SetTopics(topicIDs)
+		if err := useCase.vocabRepo.SetTopics(ctx, existing.ID, topicIDs); err != nil {
+			return nil, apperr.InternalServerError("common.internal_server_error", err)
 		}
 	}
 
 	// Set grammar points if provided
 	if req.GrammarPointIDs != nil {
-		gpIDs, parseErr := parseGrammarPointIDs(req.GrammarPointIDs)
+		gpIDs, parseErr := mapper.ParseGrammarPointIDs(req.GrammarPointIDs)
 		if parseErr != nil {
 			return nil, apperr.BadRequest("vocabulary.invalid_grammar_point_id")
 		}
 		found, findErr := useCase.grammarRepo.FindByIDs(ctx, gpIDs)
 		if findErr != nil {
-			return nil, apperr.InternalServerError("grammar_point.query_failed", findErr)
+			return nil, apperr.InternalServerError("common.internal_server_error", findErr)
 		}
 		if len(found) != len(gpIDs) {
 			return nil, apperr.BadRequest("vocabulary.invalid_grammar_point_id")
 		}
-		if err := useCase.vocabRepo.SetGrammarPoints(ctx, vocab.ID, gpIDs); err != nil {
-			return nil, apperr.InternalServerError("vocabulary.set_grammar_points_failed", err)
+		existing.SetGrammarPoints(gpIDs)
+		if err := useCase.vocabRepo.SetGrammarPoints(ctx, existing.ID, gpIDs); err != nil {
+			return nil, apperr.InternalServerError("common.internal_server_error", err)
 		}
 	}
 
-	return mapper.ToVocabularyResponse(vocab), nil
+	return mapper.ToVocabularyResponse(existing), nil
 }
 
 func (useCase *VocabularyCommand) DeleteVocabulary(ctx context.Context, id string) error {
@@ -116,14 +122,15 @@ func (useCase *VocabularyCommand) DeleteVocabulary(ctx context.Context, id strin
 
 	vocab, err := useCase.vocabRepo.FindByID(ctx, vocabID)
 	if err != nil {
-		return apperr.InternalServerError("vocabulary.query_failed", err)
+		return apperr.InternalServerError("common.internal_server_error", err)
 	}
+
 	if vocab == nil {
 		return apperr.NotFound("vocabulary.not_found")
 	}
 
 	if err := useCase.vocabRepo.Delete(ctx, vocabID); err != nil {
-		return apperr.InternalServerError("vocabulary.delete_failed", err)
+		return apperr.InternalServerError("common.internal_server_error", err)
 	}
 
 	return nil
@@ -137,13 +144,14 @@ func (useCase *VocabularyCommand) SetTopics(ctx context.Context, id string, topi
 
 	vocab, err := useCase.vocabRepo.FindByID(ctx, vocabID)
 	if err != nil {
-		return apperr.InternalServerError("vocabulary.query_failed", err)
+		return apperr.InternalServerError("common.internal_server_error", err)
 	}
+
 	if vocab == nil {
 		return apperr.NotFound("vocabulary.not_found")
 	}
 
-	parsed, err := parseTopicIDs(topicIDs)
+	parsed, err := mapper.ParseTopicIDs(topicIDs)
 	if err != nil {
 		return apperr.BadRequest("vocabulary.invalid_topic_id")
 	}
@@ -151,15 +159,16 @@ func (useCase *VocabularyCommand) SetTopics(ctx context.Context, id string, topi
 	if len(parsed) > 0 {
 		found, findErr := useCase.topicRepo.FindByIDs(ctx, parsed)
 		if findErr != nil {
-			return apperr.InternalServerError("topic.query_failed", findErr)
+			return apperr.InternalServerError("common.internal_server_error", findErr)
 		}
+
 		if len(found) != len(parsed) {
 			return apperr.BadRequest("vocabulary.invalid_topic_id")
 		}
 	}
 
 	if err := useCase.vocabRepo.SetTopics(ctx, vocabID, parsed); err != nil {
-		return apperr.InternalServerError("vocabulary.set_topics_failed", err)
+		return apperr.InternalServerError("common.internal_server_error", err)
 	}
 
 	return nil
@@ -173,13 +182,14 @@ func (useCase *VocabularyCommand) SetGrammarPoints(ctx context.Context, id strin
 
 	vocab, err := useCase.vocabRepo.FindByID(ctx, vocabID)
 	if err != nil {
-		return apperr.InternalServerError("vocabulary.query_failed", err)
+		return apperr.InternalServerError("common.internal_server_error", err)
 	}
+
 	if vocab == nil {
 		return apperr.NotFound("vocabulary.not_found")
 	}
 
-	parsed, err := parseGrammarPointIDs(grammarPointIDs)
+	parsed, err := mapper.ParseGrammarPointIDs(grammarPointIDs)
 	if err != nil {
 		return apperr.BadRequest("vocabulary.invalid_grammar_point_id")
 	}
@@ -187,57 +197,17 @@ func (useCase *VocabularyCommand) SetGrammarPoints(ctx context.Context, id strin
 	if len(parsed) > 0 {
 		found, findErr := useCase.grammarRepo.FindByIDs(ctx, parsed)
 		if findErr != nil {
-			return apperr.InternalServerError("grammar_point.query_failed", findErr)
+			return apperr.InternalServerError("common.internal_server_error", findErr)
 		}
+
 		if len(found) != len(parsed) {
 			return apperr.BadRequest("vocabulary.invalid_grammar_point_id")
 		}
 	}
 
 	if err := useCase.vocabRepo.SetGrammarPoints(ctx, vocabID, parsed); err != nil {
-		return apperr.InternalServerError("vocabulary.set_grammar_points_failed", err)
+		return apperr.InternalServerError("common.internal_server_error", err)
 	}
 
 	return nil
-}
-
-// toVocabularyParams converts DTO fields to domain VocabularyParams.
-func toVocabularyParams(
-	languageID, proficiencyLevelID, word, phonetic, audioURL, imageURL string,
-	frequencyRank int,
-	metadata map[string]any,
-	meanings []vdto.MeaningDTO,
-) domain.VocabularyParams {
-	meaningParams := make([]domain.MeaningParams, 0, len(meanings))
-	for _, meaning := range meanings {
-		exampleParams := make([]domain.ExampleParams, 0, len(meaning.Examples))
-		for _, example := range meaning.Examples {
-			exampleParams = append(exampleParams, domain.ExampleParams{
-				Sentence:     example.Sentence,
-				Phonetic:     example.Phonetic,
-				Translations: example.Translations,
-				AudioURL:     example.AudioURL,
-			})
-		}
-
-		meaningParams = append(meaningParams, domain.MeaningParams{
-			LanguageID: meaning.LanguageID,
-			Meaning:    meaning.Meaning,
-			WordType:   meaning.WordType,
-			IsPrimary:  meaning.IsPrimary,
-			Examples:   exampleParams,
-		})
-	}
-
-	return domain.VocabularyParams{
-		LanguageID:         languageID,
-		ProficiencyLevelID: proficiencyLevelID,
-		Word:               word,
-		Phonetic:           phonetic,
-		AudioURL:           audioURL,
-		ImageURL:           imageURL,
-		FrequencyRank:      frequencyRank,
-		Metadata:           metadata,
-		Meanings:           meaningParams,
-	}
 }

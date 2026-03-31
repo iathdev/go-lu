@@ -14,7 +14,6 @@ All endpoints MUST use the unified response envelope defined below. No exception
 ```
 
 - `data` and `error` are **mutually exclusive** — present on their respective case, **omitted** (not null) on the other.
-- **Null policy**: fields with no value are **omitted**, never set to null. Use `omitempty` on all Go struct tags.
 
 ## Success
 
