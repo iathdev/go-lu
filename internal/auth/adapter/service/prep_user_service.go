@@ -107,12 +107,12 @@ func (service *PrepUserService) callPrepMe(ctx context.Context, token string) (*
 		resp, err := service.client.Do(req)
 		if err != nil {
 			logger.Error(ctx, "[AUTH] Prep connection failed", zap.String("endpoint", endpoint), zap.Error(err))
-			return nil, apperr.ServiceUnavailable("auth.service_unavailable", err)
+			return nil, apperr.ServiceUnavailable("common.service_unavailable", err)
 		}
 		defer func() { _ = resp.Body.Close() }()
 
 		if resp.StatusCode == http.StatusUnauthorized {
-			authErr := apperr.Unauthorized("auth.unauthorized")
+			authErr := apperr.Unauthorized("common.unauthorized")
 			if returnURL := service.fetchReturnURL(ctx, token); returnURL != "" {
 				authErr = authErr.WithData(map[string]any{"return_url": returnURL})
 			}
@@ -121,13 +121,13 @@ func (service *PrepUserService) callPrepMe(ctx context.Context, token string) (*
 
 		if resp.StatusCode != http.StatusOK {
 			logger.Error(ctx, "[AUTH] Prep unexpected status", zap.String("endpoint", endpoint), zap.Int("status", resp.StatusCode))
-			return nil, apperr.ServiceUnavailable("auth.service_unavailable", fmt.Errorf("unexpected status: %s", resp.Status))
+			return nil, apperr.ServiceUnavailable("common.service_unavailable", fmt.Errorf("unexpected status: %s", resp.Status))
 		}
 
 		var body prepAuthMeResponse
 		if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
 			logger.Error(ctx, "[AUTH] Prep decode failed", zap.String("endpoint", endpoint), zap.Error(err))
-			return nil, apperr.ServiceUnavailable("auth.service_unavailable", err)
+			return nil, apperr.ServiceUnavailable("common.service_unavailable", err)
 		}
 
 		return domain.NewPrepUser(body.Data.ID, body.Data.Email, body.Data.Name, body.Data.IsFirstLogin, body.Data.ForceUpdatePassword), nil

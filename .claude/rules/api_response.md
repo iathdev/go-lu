@@ -41,7 +41,7 @@ response.HandleError(c, err)   // maps AppError → {success:false, error:{code,
 ### Direct (middleware / router, no AppError)
 
 ```go
-response.Unauthorized(c, "auth.unauthorized")
+response.Unauthorized(c, "common.unauthorized")
 response.NotFound(c, "common.route_not_found")
 response.BadRequest(c, "common.bad_request")
 response.TooManyRequests(c, "common.too_many_requests")
