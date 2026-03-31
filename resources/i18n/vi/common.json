@@ -6,7 +6,6 @@
   "common.forbidden": "Bị cấm",
   "common.conflict": "Xung đột",
   "common.not_found": "Không tìm thấy",
-  "common.internal_server_error": "Lỗi hệ thống",
   "common.internal_error": "Lỗi hệ thống",
   "common.invalid_input": "Dữ liệu không hợp lệ",
   "common.too_many_requests": "Quá nhiều yêu cầu, vui lòng thử lại sau",

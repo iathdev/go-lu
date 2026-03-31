@@ -89,7 +89,7 @@ func SuccessList(c *gin.Context, data interface{}, pagination PaginationMeta) {
 func HandleError(c *gin.Context, err error) {
 	var domErr *apperr.AppError
 	if !errors.As(err, &domErr) {
-		sendError(c, http.StatusInternalServerError, apperr.CodeInternalServerError, "common.internal_server_error", nil)
+		sendError(c, http.StatusInternalServerError, apperr.CodeInternalServerError, "common.internal_error", nil)
 		return
 	}
 
@@ -154,7 +154,7 @@ func TooManyRequests(c *gin.Context, messageKey string) {
 
 func InternalServerError(c *gin.Context, messageKey string) {
 	if messageKey == "" {
-		messageKey = "common.internal_server_error"
+		messageKey = "common.internal_error"
 	}
 	sendError(c, http.StatusInternalServerError, apperr.CodeInternalServerError, messageKey)
 }

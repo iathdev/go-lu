@@ -22,7 +22,7 @@ func RecoveryMiddleware() gin.HandlerFunc {
 		// Report to Sentry (no-op if Sentry DSN is not configured)
 		infrasentry.RecoverWithSentry(recovered)
 
-		response.InternalServerError(c, "common.internal_server_error")
+		response.InternalServerError(c, "common.internal_error")
 		c.Abort()
 	})
 }
