@@ -10,6 +10,7 @@ import (
 type ProficiencyLevelModel struct {
 	ID            uuid.UUID `gorm:"type:uuid;primary_key"`
 	CategoryID    uuid.UUID `gorm:"type:uuid;not null"`
+	PrepLevelID   *int      `gorm:"column:prep_level_id"`
 	Code          string    `gorm:"not null"`
 	Name          string    `gorm:"not null"`
 	Target        float64   `gorm:"type:decimal(8,2)"`
@@ -25,6 +26,7 @@ func (model *ProficiencyLevelModel) ToEntity() *domain.ProficiencyLevel {
 	return &domain.ProficiencyLevel{
 		ID:            domain.ProficiencyLevelIDFromUUID(model.ID),
 		CategoryID:    domain.CategoryIDFromUUID(model.CategoryID),
+		PrepLevelID:   model.PrepLevelID,
 		Code:          model.Code,
 		Name:          model.Name,
 		Target:        model.Target,
@@ -39,6 +41,7 @@ func FromProficiencyLevelEntity(level *domain.ProficiencyLevel) *ProficiencyLeve
 	return &ProficiencyLevelModel{
 		ID:            level.ID.UUID(),
 		CategoryID:    level.CategoryID.UUID(),
+		PrepLevelID:   level.PrepLevelID,
 		Code:          level.Code,
 		Name:          level.Name,
 		Target:        level.Target,

@@ -162,18 +162,19 @@ var defaultPlans = map[string]Plan{
 
 type ConfigService struct {
     plans       map[string]Plan      // loaded at startup
-    redisClient *redis.Client        // quota counter
+    db          *gorm.DB             // quota counter (usage_counts SoT)
+    redisClient *redis.Client        // quota read cache
 }
 
-func NewConfigService(plans map[string]Plan, redisClient *redis.Client) Service {
-    return &ConfigService{plans: plans, redisClient: redisClient}
+func NewConfigService(plans map[string]Plan, db *gorm.DB, redisClient *redis.Client) Service {
+    return &ConfigService{plans: plans, db: db, redisClient: redisClient}
 }
 ```
 
 **Lookup flow:**
 1. Lấy `plan_slug` từ context (auth middleware đã set từ JWT)
 2. Lookup `plans[plan_slug]` → lấy `Entitlement` cho feature key
-3. Nếu quota type → Redis INCR `quota:{user_id}:{feature_key}:{utc_date}` → compare với limit
+3. Nếu quota type → PG atomic upsert `usage_counts` (`INSERT ... ON CONFLICT DO UPDATE WHERE count < limit`) → trả count mới. Update Redis read cache
 4. Trả `CheckResult`
 
 ### 2.3 Plan source — JWT claim
@@ -194,32 +195,27 @@ Auth middleware → extract plan từ JWT → set ctx "user_plan"
 
 ## 3. Bài toán đi kèm & ví dụ áp dụng từng feature
 
-### 3.1 Quota — Redis counter
+### 3.1 Quota — Usage counting
 
 **Bài toán:** Đếm usage per-user per-feature per-day, atomic, shared across instances.
 
-**Giải pháp:** Redis INCR + TTL.
-
-```
-Key:   quota:{user_id}:{feature_key}:{utc_date}
-       VD: quota:abc-123:ocr_scan:2026-03-20
-Value: integer (auto-increment)
-TTL:   48h
-```
+**Giải pháp:** PG (SoT, atomic upsert) + Redis (read cache) + PG audit (async). Chi tiết storage options, counting strategy, và Service interface update xem [`usage_counting.md`](usage_counting.md).
 
 **Ví dụ áp dụng:**
 
 | Resource | Free limit | Flow khi user gọi API |
 |---|---|---|
-| `ocr_scan` | 3/day | `POST /api/vocabularies/ocr-scan` → middleware `CheckQuota("ocr_scan")` → Redis INCR → count=2 ≤ 3 → allow. Count=4 > 3 → 429 `QUOTA_EXCEEDED` + `remaining: 0, resets_at: tomorrow 00:00 UTC` |
-| `create_card` | 20/day | `POST /api/vocabularies` → middleware `CheckQuota("create_card")` → Redis INCR → count=21 > 20 → 429 |
-| `pronunciation` | 3/day | `POST /api/pronunciation/check` → middleware `CheckQuota("pronunciation")` → Redis INCR |
-| `recall_writing` | 5/day | `POST /api/learning/stroke-recall` → middleware `CheckQuota("recall_writing")` → Redis INCR |
+| `ocr_scan` | 3/day | `POST /api/vocabularies/ocr-scan` → middleware `CheckQuota("ocr_scan")` → PG Reserve (atomic upsert WHERE count < 3) → count=2 → allow → action success → async INSERT usage_records |
+| `create_card` | 20/day | `POST /api/vocabularies` → middleware `CheckQuota("create_card")` → PG Reserve → RowsAffected=0 (count=20, WHERE count < 20 fail) → 429 |
+| `pronunciation` | 3/day | `POST /api/pronunciation/check` → middleware `CheckQuota("pronunciation")` → PG Reserve |
+| `recall_writing` | 5/day | `POST /api/learning/stroke-recall` → middleware `CheckQuota("recall_writing")` → PG Reserve |
 
 **Edge cases:**
-- Redis down → **fail-open** (allow request, log warning). Tại sao: tốn thêm vài cent tốt hơn block user hợp lệ
-- User Pro (limit = -1) → middleware skip Redis INCR, return allowed ngay
-- UTC midnight reset → key mới tự động (`2026-03-21`), key cũ TTL expire
+- PG down → **fail-open** (allow request, log warning, config). Tại sao: tốn thêm vài cent tốt hơn block user hợp lệ
+- Redis down → không ảnh hưởng enforcement (PG là SoT). Read path chậm hơn nhưng đúng
+- User Pro (limit = -1) → middleware skip Reserve, return allowed ngay
+- UTC midnight reset → period_key mới tự động (`"2026-03-21"`), old rows giữ cho analytics
+- Action fail sau Reserve → **PG rollback** `UPDATE count = GREATEST(count - 1, 0)` + DEL Redis cache (xem `usage_counting.md` §3.5)
 
 ### 3.2 Feature lock — Boolean check
 
@@ -290,7 +286,7 @@ func (uc *VocabularyQuery) ListByHSKLevel(ctx context.Context, level int, ...) {
 
 | Loại | Khi Redis/config lỗi | Lý do |
 |---|---|---|
-| Quota | Fail-open (allow) | Worst case vài cent extra |
+| Quota (PG down) | Fail-open (allow) | Worst case vài cent extra. Redis down → không ảnh hưởng enforcement |
 | Feature | Fail-closed (deny, default "free") | Revenue protection |
 | Scope | Fail-closed (default lowest scope) | Revenue protection |
 
@@ -305,14 +301,14 @@ Những quyết định trong Plan A mà **ảnh hưởng trực tiếp** đến
 | **Interface `Service`** | Plan B chỉ cần implement interface này với DB loader. Middleware, handler, use case không đổi |
 | **Feature key naming** (`ocr_scan`, `ai_chat`) | Plan B dùng làm `features.key` trong DB. Đổi key = migration phức tạp. Chọn tên stable từ đầu |
 | **3 entitlement types** (quota/feature/scope) | Plan B map sang `features.type` column. Thêm type = thêm column |
-| **Redis quota counter key format** | Plan B vẫn dùng Redis counter cho hot path. Key format giữ nguyên |
+| **PG `usage_counts` table + Redis read cache** | Plan B giữ nguyên PG SoT + Redis cache. Schema và flow không đổi |
 | **Response format (429/403 + details)** | Mobile đã integrate. Plan B trả cùng format |
 | **JWT chỉ chứa `plan_slug`** | Plan B resolve entitlements từ DB, không từ JWT. JWT vẫn chỉ chứa plan_slug |
 
 **Gì KHÔNG cần làm trong Plan A:**
 - ❌ Admin API
 - ❌ `user_entitlements` (per-user override)
-- ❌ `usage_records` table (async audit log)
+- ✅ `usage_records` table (async audit log) — moved to MVP scope, xem [`usage_counting.md`](usage_counting.md)
 - ❌ Two-level cache (in-memory + Redis)
 - ❌ Webhook subscription change listener
 

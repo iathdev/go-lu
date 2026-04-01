@@ -97,6 +97,7 @@ GET /api/v1/categories
     {
       "id": "019...",
       "language_id": "019...",
+      "prep_category_id": 5,
       "code": "hsk",
       "name": "HSK 3.0",
       "is_public": true
@@ -145,6 +146,7 @@ GET /api/v1/proficiency-levels
     {
       "id": "019...",
       "category_id": "019...",
+      "prep_level_id": 1,
       "code": "hsk-1",
       "name": "HSK 1",
       "target": 180.00,

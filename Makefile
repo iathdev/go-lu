@@ -23,6 +23,7 @@ migrate-up:
 	@$(MIGRATE) -path "$(PATH_MIG)" -database "$(URL)" up
 
 migrate-down:
+	@if [ $(STEPS) -gt 3 ]; then echo "Error: max 3 steps allowed (got $(STEPS))"; exit 1; fi
 	@$(MIGRATE) -path "$(PATH_MIG)" -database "$(URL)" down $(STEPS)
 
 migrate-down-%:

@@ -20,11 +20,12 @@ func ToLanguageResponse(lang *domain.Language) *vdto.LanguageResponse {
 // ToCategoryResponse maps domain.Category to CategoryResponse.
 func ToCategoryResponse(cat *domain.Category) *vdto.CategoryResponse {
 	return &vdto.CategoryResponse{
-		ID:         cat.ID.String(),
-		LanguageID: cat.LanguageID.String(),
-		Code:       cat.Code,
-		Name:       cat.Name,
-		IsPublic:   cat.IsPublic,
+		ID:             cat.ID.String(),
+		LanguageID:     cat.LanguageID.String(),
+		PrepCategoryID: cat.PrepCategoryID,
+		Code:           cat.Code,
+		Name:           cat.Name,
+		IsPublic:       cat.IsPublic,
 	}
 }
 
@@ -33,6 +34,7 @@ func ToProficiencyLevelResponse(profLevel *domain.ProficiencyLevel) *vdto.Profic
 	return &vdto.ProficiencyLevelResponse{
 		ID:            profLevel.ID.String(),
 		CategoryID:    profLevel.CategoryID.String(),
+		PrepLevelID:   profLevel.PrepLevelID,
 		Code:          profLevel.Code,
 		Name:          profLevel.Name,
 		Target:        profLevel.Target,

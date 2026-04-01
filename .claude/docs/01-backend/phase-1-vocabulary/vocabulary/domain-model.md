@@ -105,6 +105,7 @@ classDiagram
         <<Entity>>
         CategoryID id
         LanguageID languageID
+        *int prepCategoryID
         string code
         string name
         bool isPublic
@@ -114,6 +115,7 @@ classDiagram
         <<Entity>>
         ProficiencyLevelID id
         CategoryID categoryID
+        *int prepLevelID
         string code
         string name
         float64 target

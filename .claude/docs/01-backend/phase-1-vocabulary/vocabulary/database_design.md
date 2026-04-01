@@ -47,17 +47,19 @@ Mỗi ngôn ngữ có thể có nhiều hệ thống (Chinese: HSK + CEFR). 1 ca
 
 ```sql
 CREATE TABLE categories (
-    id          UUID PRIMARY KEY,
-    language_id UUID NOT NULL,
-    code        VARCHAR(20) NOT NULL,           -- 'hsk', 'jlpt', 'topik', 'cefr'
-    name        VARCHAR(100) NOT NULL,          -- 'HSK 3.0', 'JLPT', 'CEFR'
-    is_public   BOOLEAN NOT NULL DEFAULT false,
-    created_at  TIMESTAMPTZ DEFAULT NOW(),
-    updated_at  TIMESTAMPTZ DEFAULT NOW(),
+    id               UUID PRIMARY KEY,
+    language_id      UUID NOT NULL,
+    prep_category_id INT,                          -- FK to Prep ProductCategoryId (NULL = no Prep mapping)
+    code             VARCHAR(20) NOT NULL,          -- 'hsk', 'jlpt', 'topik', 'cefr'
+    name             VARCHAR(100) NOT NULL,         -- 'HSK 3.0', 'JLPT', 'CEFR'
+    is_public        BOOLEAN NOT NULL DEFAULT false,
+    created_at       TIMESTAMPTZ DEFAULT NOW(),
+    updated_at       TIMESTAMPTZ DEFAULT NOW(),
     UNIQUE(language_id, code)
 );
 
 CREATE INDEX idx_categories_language ON categories(language_id);
+CREATE UNIQUE INDEX idx_categories_prep_category ON categories(prep_category_id) WHERE prep_category_id IS NOT NULL;
 ```
 
 ### `proficiency_levels` — Hệ thống trình độ per category
@@ -66,19 +68,21 @@ Thay thế `hsk_level` hardcode. Mỗi category chứa nhiều levels: HSK 1-9, 
 
 ```sql
 CREATE TABLE proficiency_levels (
-    id            UUID PRIMARY KEY,
-    category_id   UUID NOT NULL,
-    code          VARCHAR(20) NOT NULL,        -- 'hsk-1', 'jlpt-n5', 'topik-1', 'cefr-a1'
-    name          VARCHAR(100) NOT NULL,        -- 'HSK 1', 'JLPT N5'
-    target         DECIMAL(8,2),                 -- điểm mục tiêu (e.g. 180.00 cho HSK 1)
-    display_target VARCHAR(255),                 -- hiển thị trên UI ('180 điểm')
-    offset        INTEGER NOT NULL,             -- 1, 2, 3... dùng để sắp xếp tăng dần
-    created_at    TIMESTAMPTZ DEFAULT NOW(),
-    updated_at    TIMESTAMPTZ DEFAULT NOW(),
+    id             UUID PRIMARY KEY,
+    category_id    UUID NOT NULL,
+    prep_level_id  INT,                           -- FK to Prep level ID (NULL = no Prep mapping)
+    code           VARCHAR(20) NOT NULL,           -- 'hsk-1', 'jlpt-n5', 'topik-1', 'cefr-a1'
+    name           VARCHAR(100) NOT NULL,           -- 'HSK 1', 'JLPT N5'
+    target         DECIMAL(8,2),                    -- điểm mục tiêu (e.g. 180.00 cho HSK 1)
+    display_target VARCHAR(255),                    -- hiển thị trên UI ('180 điểm')
+    offset         INTEGER NOT NULL,                -- 1, 2, 3... dùng để sắp xếp tăng dần
+    created_at     TIMESTAMPTZ DEFAULT NOW(),
+    updated_at     TIMESTAMPTZ DEFAULT NOW(),
     UNIQUE(category_id, code)
 );
 
 CREATE INDEX idx_pl_category ON proficiency_levels(category_id, offset);
+CREATE UNIQUE INDEX idx_pl_prep_level ON proficiency_levels(prep_level_id) WHERE prep_level_id IS NOT NULL;
 ```
 
 ---
@@ -317,7 +321,306 @@ CREATE INDEX idx_fv_vocabulary ON folder_vocabularies(vocabulary_id);
 
 ---
 
+## ERD
+
+### Full Database ERD
+
+```mermaid
+erDiagram
+    %% ==========================================
+    %% Group 1: Language & Proficiency
+    %% ==========================================
+
+    languages {
+        UUID id PK
+        VARCHAR code UK "ISO 639-1"
+        VARCHAR name_en
+        VARCHAR name_native
+        BOOLEAN is_active
+        JSONB config
+        TIMESTAMPTZ created_at
+        TIMESTAMPTZ updated_at
+    }
+
+    categories {
+        UUID id PK
+        UUID language_id FK
+        INT prep_category_id "nullable, Prep sync"
+        VARCHAR code
+        VARCHAR name
+        BOOLEAN is_public
+        TIMESTAMPTZ created_at
+        TIMESTAMPTZ updated_at
+    }
+
+    proficiency_levels {
+        UUID id PK
+        UUID category_id FK
+        INT prep_level_id "nullable, Prep sync"
+        VARCHAR code
+        VARCHAR name
+        DECIMAL target
+        VARCHAR display_target
+        INTEGER offset
+        TIMESTAMPTZ created_at
+        TIMESTAMPTZ updated_at
+    }
+
+    %% ==========================================
+    %% Group 2: Vocabulary Content
+    %% ==========================================
+
+    vocabularies {
+        UUID id PK
+        UUID language_id FK
+        UUID proficiency_level_id FK "nullable"
+        VARCHAR word
+        VARCHAR phonetic
+        VARCHAR audio_url
+        VARCHAR image_url
+        INTEGER frequency_rank
+        JSONB metadata
+        TIMESTAMPTZ created_at
+        TIMESTAMPTZ updated_at
+        TIMESTAMPTZ deleted_at "soft delete"
+    }
+
+    vocabulary_meanings {
+        UUID id PK
+        UUID vocabulary_id FK
+        UUID language_id FK "target language"
+        TEXT meaning
+        VARCHAR word_type
+        BOOLEAN is_primary
+        INTEGER offset
+        TIMESTAMPTZ created_at
+        TIMESTAMPTZ updated_at
+    }
+
+    vocabulary_examples {
+        UUID id PK
+        UUID meaning_id FK
+        TEXT sentence
+        TEXT phonetic
+        JSONB translations
+        VARCHAR audio_url
+        INTEGER offset
+        TIMESTAMPTZ created_at
+        TIMESTAMPTZ updated_at
+    }
+
+    %% ==========================================
+    %% Group 3: Classification
+    %% ==========================================
+
+    topics {
+        UUID id PK
+        UUID category_id FK
+        VARCHAR slug
+        JSONB names "multilingual"
+        INTEGER offset
+        TIMESTAMPTZ created_at
+        TIMESTAMPTZ updated_at
+    }
+
+    vocabulary_topics {
+        UUID vocabulary_id PK,FK
+        UUID topic_id PK,FK
+    }
+
+    grammar_points {
+        UUID id PK
+        UUID category_id FK
+        UUID proficiency_level_id FK "nullable"
+        VARCHAR code
+        VARCHAR pattern
+        JSONB examples
+        JSONB rule
+        JSONB common_mistakes
+        TIMESTAMPTZ created_at
+        TIMESTAMPTZ updated_at
+    }
+
+    vocabulary_grammar_points {
+        UUID vocabulary_id PK,FK
+        UUID grammar_point_id PK,FK
+    }
+
+    %% ==========================================
+    %% Group 4: User Organization
+    %% ==========================================
+
+    folders {
+        UUID id PK
+        UUID user_id FK
+        UUID language_id FK
+        VARCHAR name
+        TEXT description
+        TIMESTAMPTZ created_at
+        TIMESTAMPTZ updated_at
+        TIMESTAMPTZ deleted_at "soft delete"
+    }
+
+    folder_vocabularies {
+        UUID folder_id PK,FK
+        UUID vocabulary_id PK,FK
+        TIMESTAMPTZ added_at
+    }
+
+    %% ==========================================
+    %% Relationships
+    %% ==========================================
+
+    %% Group 1
+    languages ||--o{ categories : "has"
+    categories ||--o{ proficiency_levels : "has"
+
+    %% Group 2
+    languages ||--o{ vocabularies : "source language"
+    proficiency_levels ||--o{ vocabularies : "level"
+    vocabularies ||--|{ vocabulary_meanings : "has meanings"
+    languages ||--o{ vocabulary_meanings : "target language"
+    vocabulary_meanings ||--o{ vocabulary_examples : "has examples"
+
+    %% Group 3
+    categories ||--o{ topics : "has"
+    vocabularies ||--o{ vocabulary_topics : ""
+    topics ||--o{ vocabulary_topics : ""
+    categories ||--o{ grammar_points : "has"
+    proficiency_levels ||--o{ grammar_points : "optional level"
+    vocabularies ||--o{ vocabulary_grammar_points : ""
+    grammar_points ||--o{ vocabulary_grammar_points : ""
+
+    %% Group 4
+    languages ||--o{ folders : "scoped to"
+    folders ||--o{ folder_vocabularies : ""
+    vocabularies ||--o{ folder_vocabularies : ""
+```
+
+### Simplified ERD
+
+```mermaid
+erDiagram
+    languages ||--o{ categories : "has"
+    categories ||--o{ proficiency_levels : "has levels"
+    categories ||--o{ topics : "has topics"
+    categories ||--o{ grammar_points : "has grammar"
+
+    languages ||--o{ vocabularies : "source lang"
+    proficiency_levels ||--o{ vocabularies : "level"
+    vocabularies ||--|{ vocabulary_meanings : "has"
+    vocabulary_meanings ||--o{ vocabulary_examples : "has"
+    languages ||--o{ vocabulary_meanings : "target lang"
+
+    vocabularies }o--o{ topics : "M:N"
+    vocabularies }o--o{ grammar_points : "M:N"
+
+    languages ||--o{ folders : "scoped"
+    folders }o--o{ vocabularies : "M:N"
+
+    proficiency_levels ||--o{ grammar_points : "optional"
+```
+
+## Tổng hợp: Thay đổi so với bản Chinese-only
+
+| Bảng | Thay đổi |
+|---|---|
+| **MỚI `languages`** | Bảng top-level, mọi content thuộc về 1 language |
+| **MỚI `proficiency_levels`** | Thay `hsk_level` INT. Hỗ trợ HSK, JLPT, TOPIK, CEFR... |
+| **MỚI `vocabulary_meanings`** | Thay `meaning_vi`/`meaning_en` hardcode. N target languages |
+| `vocabularies` | `hanzi`→`word`, `pinyin`→`phonetic`, thêm `language_id`, `proficiency_level_id`. CJK-specific fields (radicals, stroke...) → `metadata` JSONB |
+| `topics` | Thêm `language_id`. `name_cn/vi/en` → `names` JSONB |
+| `grammar_points` | Thêm `language_id`, `proficiency_level_id`. `example_cn/vi` → `examples` JSONB, `rule` → JSONB, `common_mistake` → `common_mistakes` JSONB |
+| `folders` | Thêm `language_id` (1 folder = 1 ngôn ngữ) |
+| `learning_sessions` | Thêm `language_id` |
+| `pronunciation_scores` | `syllable_*` → `unit_*`. `initial/final/tone_score` → `dimensions` JSONB |
+| `ocr_scans` | Thêm `language_id` |
+| `user_vocabulary_progress` | Không đổi structure — mode scores giữ nguyên, modes không áp dụng cho ngôn ngữ đó thì giữ 0 |
+
+## Multi-language Expansion Checklist
+
+Khi thêm 1 ngôn ngữ mới:
+
+1. Insert row vào `languages` (code, name, config JSONB)
+2. Insert rows vào `proficiency_levels` (JLPT N5-N1, TOPIK 1-6...)
+3. Seed `topics` cho ngôn ngữ đó
+4. Seed `grammar_points` cho ngôn ngữ đó
+5. Import `vocabularies` + `vocabulary_meanings` cho ngôn ngữ đó
+6. Config `languages.config` JSONB để enable/disable features (OCR, stroke, tones...)
+
+Không cần migration, không cần code change cho core logic.
+
+## Volume Estimates (50K MAU)
+
+| Nhóm | Bảng | Rows dự kiến |
+|---|---|---|
+| **Config** | `languages`, `proficiency_levels` | ~5 languages, ~30 levels |
+| **Content** | `vocabularies`, `vocabulary_meanings`, `vocabulary_examples`, `topics`, `grammar_points` | ~20K vocab, ~40K meanings, ~50K examples, ~50 topics, ~200 grammar |
+| **Organization** | `folders`, `folder_vocabularies` | ~250K folders, ~2.5M links |
+| **Learning** | `user_vocabulary_progress` | ~5M |
+| **Sessions** | `learning_sessions` | ~1.5M sessions/month |
+| **Pronunciation** | `pronunciation_scores` | ~15M/month |
+| **Gating** | `user_daily_counters`, `ocr_scans` | ~1.5M counters/month |
+
+> `pronunciation_scores` là hot table — cân nhắc **table partitioning by month** khi scale.
+
+---
+
+## Nhóm 6: OCR & Rate Limiting (chưa implement)
+
+### `ocr_scans` — OCR scan history
+
+Stateful workflow: scan → pending (chờ user review) → confirmed → completed (vocabulary đã tạo).
+Hỗ trợ 2 input: file upload (upload S3 → lưu URL) và image URL (lưu trực tiếp).
+
+```sql
+CREATE TABLE ocr_scans (
+    id              UUID PRIMARY KEY,
+    user_id         UUID NOT NULL,
+    language_id     UUID NOT NULL,
+
+    -- Image source: S3 URL (upload) hoặc external URL. NULL nếu chưa tích hợp S3.
+    image_url       VARCHAR(500),
+
+    -- OCR metadata
+    engine     VARCHAR(30) NOT NULL,
+    scan_type       VARCHAR(20) NOT NULL DEFAULT 'auto',  -- 'printed' | 'handwritten' | 'auto'
+    processing_ms   INTEGER NOT NULL DEFAULT 0,
+
+    -- Denormalized counts (cập nhật khi user confirm)
+    detected_count       INTEGER NOT NULL DEFAULT 0,
+    new_count            INTEGER NOT NULL DEFAULT 0,
+    existing_count       INTEGER NOT NULL DEFAULT 0,
+    low_confidence_count INTEGER NOT NULL DEFAULT 0,
+    confirmed_count      INTEGER NOT NULL DEFAULT 0,
+
+    -- Kết quả scan + trạng thái review từng item
+    results         JSONB NOT NULL DEFAULT '[]'::jsonb,
+
+    -- Organization
+    folder_id       UUID,
+
+    -- Workflow: pending → confirmed → completed | cancelled | expired
+    status          VARCHAR(20) NOT NULL DEFAULT 'pending',
+    confirmed_at    TIMESTAMPTZ,
+    expires_at      TIMESTAMPTZ,           -- auto-expire pending scans sau 24h
+
+    created_at      TIMESTAMPTZ DEFAULT NOW(),
+    updated_at      TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX idx_ocr_scans_user_date ON ocr_scans(user_id, created_at DESC);
+CREATE INDEX idx_ocr_scans_user_status ON ocr_scans(user_id, status) WHERE status = 'pending';
+CREATE INDEX idx_ocr_scans_expires ON ocr_scans(expires_at) WHERE status = 'pending';
+```
+
+Rate limiting / quota được thiết kế riêng trong `.claude/docs/01-backend/phase-1-vocabulary/vocabulary/entitlement/`.
+
+---
+
 ## Nhóm 5: Learning Progress
+
+> **Chưa review.** Schema dưới đây là bản draft từ requirement, chưa được review về quan hệ entity, scalability, và sync strategy. Cần review kỹ trước khi implement.
 
 ### `user_vocabulary_progress` — Memory Score + SRS per user per word
 
@@ -434,230 +737,3 @@ CREATE INDEX idx_ps_weakness ON pronunciation_scores(user_id, overall_score)
     WHERE overall_score < 70;
 ```
 
----
-
-## Triggers
-
-### `updated_at` trigger — tự động cập nhật timestamp khi UPDATE
-
-```sql
-CREATE OR REPLACE FUNCTION trigger_set_updated_at()
-RETURNS TRIGGER AS $$
-BEGIN
-    NEW.updated_at = NOW();
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
--- Áp dụng cho mỗi table có updated_at:
-CREATE TRIGGER set_updated_at BEFORE UPDATE ON languages
-    FOR EACH ROW EXECUTE FUNCTION trigger_set_updated_at();
-
-CREATE TRIGGER set_updated_at BEFORE UPDATE ON categories
-    FOR EACH ROW EXECUTE FUNCTION trigger_set_updated_at();
-
-CREATE TRIGGER set_updated_at BEFORE UPDATE ON proficiency_levels
-    FOR EACH ROW EXECUTE FUNCTION trigger_set_updated_at();
-
-CREATE TRIGGER set_updated_at BEFORE UPDATE ON vocabularies
-    FOR EACH ROW EXECUTE FUNCTION trigger_set_updated_at();
-
-CREATE TRIGGER set_updated_at BEFORE UPDATE ON vocabulary_meanings
-    FOR EACH ROW EXECUTE FUNCTION trigger_set_updated_at();
-
-CREATE TRIGGER set_updated_at BEFORE UPDATE ON vocabulary_examples
-    FOR EACH ROW EXECUTE FUNCTION trigger_set_updated_at();
-
-CREATE TRIGGER set_updated_at BEFORE UPDATE ON topics
-    FOR EACH ROW EXECUTE FUNCTION trigger_set_updated_at();
-
-CREATE TRIGGER set_updated_at BEFORE UPDATE ON grammar_points
-    FOR EACH ROW EXECUTE FUNCTION trigger_set_updated_at();
-
-CREATE TRIGGER set_updated_at BEFORE UPDATE ON folders
-    FOR EACH ROW EXECUTE FUNCTION trigger_set_updated_at();
-
-CREATE TRIGGER set_updated_at BEFORE UPDATE ON user_vocabulary_progress
-    FOR EACH ROW EXECUTE FUNCTION trigger_set_updated_at();
-
-CREATE TRIGGER set_updated_at BEFORE UPDATE ON ocr_scans
-    FOR EACH ROW EXECUTE FUNCTION trigger_set_updated_at();
-
-CREATE TRIGGER set_updated_at BEFORE UPDATE ON user_learning_stats
-    FOR EACH ROW EXECUTE FUNCTION trigger_set_updated_at();
-```
-
-> GORM auto-updates `updated_at` ở application level, nhưng trigger đảm bảo consistency khi có direct SQL updates (admin scripts, data fixes).
-
----
-
-## Nhóm 6: OCR & Rate Limiting
-
-### `ocr_scans` — OCR scan history
-
-```sql
-CREATE TABLE ocr_scans (
-    id           UUID PRIMARY KEY,
-    user_id      UUID NOT NULL,
-    language_id  UUID NOT NULL,
-    image_url    VARCHAR(500) NOT NULL,
-    engine_used  VARCHAR(30) NOT NULL,
-
-    detected_count    INTEGER DEFAULT 0,
-    confirmed_count   INTEGER DEFAULT 0,
-    duplicate_count   INTEGER DEFAULT 0,
-    results           JSONB DEFAULT '[]'::jsonb,
-    -- [{ "word": "学", "confidence": 0.95, "status": "confirmed|edited|deleted" }]
-
-    folder_id    UUID,
-    status       VARCHAR(20) DEFAULT 'pending',
-
-    created_at   TIMESTAMPTZ DEFAULT NOW(),
-    updated_at   TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE INDEX idx_ocr_user ON ocr_scans(user_id, created_at DESC);
-```
-
-### `user_daily_counters` — Rate limiting cho Free tier
-
-```sql
-CREATE TABLE user_daily_counters (
-    user_id       UUID NOT NULL,
-    counter_date  DATE NOT NULL DEFAULT CURRENT_DATE,
-    counter_type  VARCHAR(30) NOT NULL,
-    -- scan, card_create, pronunciation, recall_writing
-    count         INTEGER NOT NULL DEFAULT 0,
-
-    PRIMARY KEY (user_id, counter_date, counter_type)
-);
-```
-
----
-
-## Nhóm 7: Dashboard Cache
-
-### `user_learning_stats` — Materialized stats per user per language
-
-Bảng denormalized cho Dashboard. Scoped per language vì user có thể học nhiều ngôn ngữ cùng lúc.
-
-```sql
-CREATE TABLE user_learning_stats (
-    id               UUID PRIMARY KEY,
-    user_id          UUID NOT NULL,
-    language_id      UUID NOT NULL,
-
-    total_words_learned   INTEGER DEFAULT 0,
-    total_xp              INTEGER DEFAULT 0,
-    current_streak_days   INTEGER DEFAULT 0,
-    longest_streak_days   INTEGER DEFAULT 0,
-    last_active_date      DATE,
-
-    -- Memory State breakdown
-    count_start_learning   INTEGER DEFAULT 0,
-    count_still_learning   INTEGER DEFAULT 0,
-    count_almost_learnt    INTEGER DEFAULT 0,
-    count_finish_learning  INTEGER DEFAULT 0,
-    count_memory_mode      INTEGER DEFAULT 0,
-    count_mastered         INTEGER DEFAULT 0,
-
-    -- Proficiency level progress (per level tracking)
-    level_progress JSONB DEFAULT '{}'::jsonb,
-    -- { "hsk-1": { "vocabulary": 250, "characters": 180, "syllables": 200, "grammar": 15 },
-    --   "hsk-2": { "vocabulary": 80, "characters": 60, "syllables": 70, "grammar": 5 } }
-    -- Japanese: { "jlpt-n5": { "vocabulary": 500, "kanji": 60, "grammar": 30 } }
-    -- Totals per level lấy từ proficiency_levels table
-
-    words_due_today    INTEGER DEFAULT 0,
-
-    updated_at TIMESTAMPTZ DEFAULT NOW(),
-
-    UNIQUE(user_id, language_id)
-);
-
-CREATE INDEX idx_uls_user ON user_learning_stats(user_id);
-```
-
----
-
-## ERD
-
-```
-languages
-  |
-  |--< categories
-  |       |
-  |       +--< proficiency_levels
-  |       |
-  |       |--< vocabularies --< vocabulary_meanings
-  |       |       |       +--< vocabulary_examples
-  |       |       |
-  |       |       |--< vocabulary_topics >-- topics --< languages
-  |       |       |
-  |       |       |--< vocabulary_grammar_points >-- grammar_points
-  |       |       |                                      |
-  |       |       |                                      +-- languages
-  |       |       |                                      +-- proficiency_levels
-  |       |       |
-  |       |       +--< folder_vocabularies >-- folders
-  |       |       |                               |
-  |       |       |                               +-- users
-  |       |       |                               +-- languages
-  |       |       |
-  |       |       +--< user_vocabulary_progress --< users
-  |       |       |
-  |       |       +--< learning_sessions
-  |       |       |
-  |       |       +--< pronunciation_scores
-  |       |       |
-  |       |       +--< ocr_scans
-  |       |
-  |       +--< user_learning_stats --< users
-  |
-  +-- users --< user_daily_counters
-```
-
-## Tổng hợp: Thay đổi so với bản Chinese-only
-
-| Bảng | Thay đổi |
-|---|---|
-| **MỚI `languages`** | Bảng top-level, mọi content thuộc về 1 language |
-| **MỚI `proficiency_levels`** | Thay `hsk_level` INT. Hỗ trợ HSK, JLPT, TOPIK, CEFR... |
-| **MỚI `vocabulary_meanings`** | Thay `meaning_vi`/`meaning_en` hardcode. N target languages |
-| `vocabularies` | `hanzi`→`word`, `pinyin`→`phonetic`, thêm `language_id`, `proficiency_level_id`. CJK-specific fields (radicals, stroke...) → `metadata` JSONB |
-| `topics` | Thêm `language_id`. `name_cn/vi/en` → `names` JSONB |
-| `grammar_points` | Thêm `language_id`, `proficiency_level_id`. `example_cn/vi` → `examples` JSONB, `rule` → JSONB, `common_mistake` → `common_mistakes` JSONB |
-| `folders` | Thêm `language_id` (1 folder = 1 ngôn ngữ) |
-| `learning_sessions` | Thêm `language_id` |
-| `pronunciation_scores` | `syllable_*` → `unit_*`. `initial/final/tone_score` → `dimensions` JSONB |
-| `ocr_scans` | Thêm `language_id` |
-| `user_learning_stats` | PK thành `(user_id, language_id)`. `dimension_progress` → `level_progress` generic |
-| `user_vocabulary_progress` | Không đổi structure — mode scores giữ nguyên, modes không áp dụng cho ngôn ngữ đó thì giữ 0 |
-
-## Multi-language Expansion Checklist
-
-Khi thêm 1 ngôn ngữ mới:
-
-1. Insert row vào `languages` (code, name, config JSONB)
-2. Insert rows vào `proficiency_levels` (JLPT N5-N1, TOPIK 1-6...)
-3. Seed `topics` cho ngôn ngữ đó
-4. Seed `grammar_points` cho ngôn ngữ đó
-5. Import `vocabularies` + `vocabulary_meanings` cho ngôn ngữ đó
-6. Config `languages.config` JSONB để enable/disable features (OCR, stroke, tones...)
-
-Không cần migration, không cần code change cho core logic.
-
-## Volume Estimates (50K MAU)
-
-| Nhóm | Bảng | Rows dự kiến |
-|---|---|---|
-| **Config** | `languages`, `proficiency_levels` | ~5 languages, ~30 levels |
-| **Content** | `vocabularies`, `vocabulary_meanings`, `vocabulary_examples`, `topics`, `grammar_points` | ~20K vocab, ~40K meanings, ~50K examples, ~50 topics, ~200 grammar |
-| **Organization** | `folders`, `folder_vocabularies` | ~250K folders, ~2.5M links |
-| **Learning** | `user_vocabulary_progress` | ~5M |
-| **Sessions** | `learning_sessions` | ~1.5M sessions/month |
-| **Pronunciation** | `pronunciation_scores` | ~15M/month |
-| **Gating** | `user_daily_counters`, `ocr_scans` | ~1.5M counters/month |
-| **Dashboard** | `user_learning_stats` | ~50K × languages learned |
-
-> `pronunciation_scores` là hot table — cân nhắc **table partitioning by month** khi scale.

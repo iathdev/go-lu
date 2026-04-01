@@ -6,6 +6,7 @@ import "time"
 type ProficiencyLevel struct {
 	ID            ProficiencyLevelID
 	CategoryID    CategoryID
+	PrepLevelID   *int
 	Code          string
 	Name          string
 	Target        float64

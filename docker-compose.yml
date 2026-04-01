@@ -6,7 +6,7 @@ services:
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
-      - POSTGRES_DB=learning_ultility
+      - POSTGRES_DB=learning_utilities
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
