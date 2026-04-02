@@ -41,7 +41,7 @@ func (useCase *ProficiencyLevelQuery) ListProficiencyLevels(ctx context.Context,
 }
 
 func (useCase *ProficiencyLevelQuery) GetProficiencyLevel(ctx context.Context, id string) (*vdto.ProficiencyLevelResponse, error) {
-	plID, err := domain.ParseProficiencyLevelID(id)
+	plID, err := domain.ParseLevelID(id)
 	if err != nil {
 		return nil, apperr.BadRequest("proficiency_level.invalid_id")
 	}

@@ -54,10 +54,11 @@ type selfHostedOCRResponse struct {
 }
 
 type selfHostedOCRCharacter struct {
-	Text       string   `json:"text"`
-	Pinyin     string   `json:"pinyin"`
-	Confidence float64  `json:"confidence"`
-	Candidates []string `json:"candidates"`
+	Text       string      `json:"text"`
+	Pinyin     string      `json:"pinyin"`
+	Confidence float64     `json:"confidence"`
+	Candidates []string    `json:"candidates"`
+	Location   [][]float64 `json:"location"`
 }
 
 func callSelfHostedOCR(ctx context.Context, client *http.Client, baseURL string, engine string, req port.OCRRequest) (*port.OCRResult, error) {
@@ -110,6 +111,7 @@ func callSelfHostedOCR(ctx context.Context, client *http.Client, baseURL string,
 			Pronunciation: char.Pinyin,
 			Confidence:    char.Confidence,
 			Candidates:    char.Candidates,
+			BoundingBox:   parseSelfHostedLocation(char.Location),
 		})
 	}
 
@@ -117,4 +119,96 @@ func callSelfHostedOCR(ctx context.Context, client *http.Client, baseURL string,
 		Characters: characters,
 		Engine:     ocrResp.Engine,
 	}, nil
+}
+
+func (service *PaddleOCRService) ExtractText(ctx context.Context, req port.OCRRequest) (*port.OCRTextResult, error) {
+	result, err := service.breaker.Execute(func() (any, error) {
+		return callSelfHostedExtractText(ctx, service.client, service.baseURL, "paddleocr", req)
+	})
+	if err != nil {
+		return nil, err
+	}
+	return result.(*port.OCRTextResult), nil
+}
+
+type selfHostedExtractTextResponse struct {
+	Blocks []selfHostedTextBlock `json:"blocks"`
+	Engine string                `json:"engine"`
+}
+
+type selfHostedTextBlock struct {
+	Text       string      `json:"text"`
+	Location   [][]float64 `json:"location"`
+	Confidence float64     `json:"confidence"`
+}
+
+func callSelfHostedExtractText(ctx context.Context, client *http.Client, baseURL string, engine string, req port.OCRRequest) (*port.OCRTextResult, error) {
+	language := req.Language
+	if language == "" {
+		language = "zh"
+	}
+
+	payload := selfHostedOCRRequest{
+		Image:    base64.StdEncoding.EncodeToString(req.Image),
+		Language: language,
+		Engine:   engine,
+	}
+
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return nil, apperr.InternalServerError("common.internal_error", err)
+	}
+
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, baseURL+"/extract-text", bytes.NewReader(body))
+	if err != nil {
+		return nil, apperr.InternalServerError("common.internal_error", err)
+	}
+	httpReq.Header.Set("Content-Type", "application/json")
+
+	resp, err := client.Do(httpReq)
+	if err != nil {
+		logger.WithContext(ctx).Error("[OCR] service connection failed", zap.Error(err))
+		return nil, apperr.ServiceUnavailable("ocr.service_connection_failed", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		respBody, _ := io.ReadAll(resp.Body)
+		statusErr := fmt.Errorf("status %s: %s", resp.Status, string(respBody))
+		logger.WithContext(ctx).Error("[OCR] service returned error", zap.Int("status", resp.StatusCode), zap.String("response", string(respBody)))
+		return nil, apperr.ServiceUnavailable("ocr.service_error", statusErr)
+	}
+
+	var textResp selfHostedExtractTextResponse
+	if err := json.NewDecoder(resp.Body).Decode(&textResp); err != nil {
+		logger.WithContext(ctx).Error("[OCR] failed to decode response", zap.Error(err))
+		return nil, apperr.ServiceUnavailable("ocr.service_invalid_response", err)
+	}
+
+	blocks := make([]port.OCRTextBlock, 0, len(textResp.Blocks))
+	for _, block := range textResp.Blocks {
+		blocks = append(blocks, port.OCRTextBlock{
+			Text:        block.Text,
+			BoundingBox: parseSelfHostedLocation(block.Location),
+			Confidence:  block.Confidence,
+		})
+	}
+
+	return &port.OCRTextResult{
+		Blocks: blocks,
+		Engine: textResp.Engine,
+	}, nil
+}
+
+func parseSelfHostedLocation(location [][]float64) *port.BoundingBox {
+	if len(location) < 4 {
+		return nil
+	}
+	vertices := make([]port.Point, len(location))
+	for i, pt := range location {
+		if len(pt) >= 2 {
+			vertices[i] = port.Point{X: int(pt[0]), Y: int(pt[1])}
+		}
+	}
+	return &port.BoundingBox{Vertices: vertices}
 }

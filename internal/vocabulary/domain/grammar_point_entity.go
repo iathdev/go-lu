@@ -6,7 +6,7 @@ import "time"
 type GrammarPoint struct {
 	ID                 GrammarPointID
 	CategoryID         CategoryID
-	ProficiencyLevelID ProficiencyLevelID
+	LevelID LevelID
 	Code               string
 	Pattern            string
 	Examples           map[string]any

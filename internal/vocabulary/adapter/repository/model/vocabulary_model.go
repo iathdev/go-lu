@@ -14,7 +14,8 @@ type MetadataJSON = common.JSONB[map[string]any]
 type VocabularyModel struct {
 	ID                 uuid.UUID      `gorm:"type:uuid;primary_key"`
 	LanguageID         uuid.UUID      `gorm:"type:uuid;not null"`
-	ProficiencyLevelID uuid.UUID      `gorm:"type:uuid"`
+	LevelID        uuid.UUID      `gorm:"column:level_id;type:uuid"`
+	WritingLevelID uuid.UUID      `gorm:"column:writing_level_id;type:uuid"`
 	Word               string         `gorm:"not null"`
 	Phonetic           string
 	AudioURL           string
@@ -37,7 +38,8 @@ func (model *VocabularyModel) ToEntity() *domain.Vocabulary {
 	return &domain.Vocabulary{
 		ID:                 domain.VocabularyIDFromUUID(model.ID),
 		LanguageID:         domain.LanguageIDFromUUID(model.LanguageID),
-		ProficiencyLevelID: domain.ProficiencyLevelIDFromUUID(model.ProficiencyLevelID),
+		LevelID:        domain.LevelIDFromUUID(model.LevelID),
+		WritingLevelID: domain.LevelIDFromUUID(model.WritingLevelID),
 		Word:               model.Word,
 		Phonetic:           model.Phonetic,
 		AudioURL:           model.AudioURL,
@@ -53,7 +55,8 @@ func FromVocabularyEntity(vocab *domain.Vocabulary) *VocabularyModel {
 	return &VocabularyModel{
 		ID:                 vocab.ID.UUID(),
 		LanguageID:         vocab.LanguageID.UUID(),
-		ProficiencyLevelID: vocab.ProficiencyLevelID.UUID(),
+		LevelID:        vocab.LevelID.UUID(),
+		WritingLevelID: vocab.WritingLevelID.UUID(),
 		Word:               vocab.Word,
 		Phonetic:           vocab.Phonetic,
 		AudioURL:           vocab.AudioURL,

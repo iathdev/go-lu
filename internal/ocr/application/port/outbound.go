@@ -4,6 +4,18 @@ import "context"
 
 type OCRServicePort interface {
 	Recognize(ctx context.Context, req OCRRequest) (*OCRResult, error)
+	ExtractText(ctx context.Context, req OCRRequest) (*OCRTextResult, error)
+}
+
+type OCRTextBlock struct {
+	Text        string
+	BoundingBox *BoundingBox
+	Confidence  float64
+}
+
+type OCRTextResult struct {
+	Blocks []OCRTextBlock
+	Engine string
 }
 
 type OCRRequest struct {
@@ -16,11 +28,21 @@ type OCRResult struct {
 	Engine     string // "paddleocr" | "tesseract" | "google_vision" | "baidu_ocr"
 }
 
+type BoundingBox struct {
+	Vertices []Point
+}
+
+type Point struct {
+	X int
+	Y int
+}
+
 type OCRCharacter struct {
 	Text          string
 	Pronunciation string
 	Confidence    float64
 	Candidates    []string
+	BoundingBox   *BoundingBox
 }
 
 type OCREngineKey string

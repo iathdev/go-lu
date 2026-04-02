@@ -23,19 +23,21 @@ type MeaningDTO struct {
 
 type CreateVocabularyRequest struct {
 	LanguageID         string         `json:"language_id" binding:"required"`
-	ProficiencyLevelID string         `json:"proficiency_level_id"`
-	Word               string         `json:"word" binding:"required"`
-	Phonetic           string         `json:"phonetic"`
-	AudioURL           string         `json:"audio_url"`
-	ImageURL           string         `json:"image_url"`
-	FrequencyRank      int            `json:"frequency_rank"`
-	Metadata           map[string]any `json:"metadata"`
-	Meanings           []MeaningDTO   `json:"meanings" binding:"required,min=1"`
+	LevelID        string         `json:"level_id"`
+	WritingLevelID string         `json:"writing_level_id"`
+	Word           string         `json:"word" binding:"required"`
+	Phonetic       string         `json:"phonetic"`
+	AudioURL       string         `json:"audio_url"`
+	ImageURL       string         `json:"image_url"`
+	FrequencyRank  int            `json:"frequency_rank"`
+	Metadata       map[string]any `json:"metadata"`
+	Meanings       []MeaningDTO   `json:"meanings" binding:"required,min=1"`
 }
 
 type UpdateVocabularyRequest struct {
-	LanguageID         string         `json:"language_id" binding:"required"`
-	ProficiencyLevelID string         `json:"proficiency_level_id"`
+	LanguageID     string         `json:"language_id" binding:"required"`
+	LevelID        string         `json:"level_id"`
+	WritingLevelID string         `json:"writing_level_id"`
 	Word               string         `json:"word" binding:"required"`
 	Phonetic           string         `json:"phonetic"`
 	AudioURL           string         `json:"audio_url"`
@@ -50,7 +52,7 @@ type UpdateVocabularyRequest struct {
 // VocabularyFilter carries query params for listing vocabularies.
 type VocabularyFilter struct {
 	LanguageID         string `form:"language_id"`
-	ProficiencyLevelID string `form:"proficiency_level_id"`
+	LevelID string `form:"level_id"`
 	TopicID            string `form:"topic_id"`
 	MeaningLang        string `form:"meaning_lang"`
 }
@@ -78,8 +80,9 @@ type MeaningResponse struct {
 type VocabularyResponse struct {
 	ID                 string            `json:"id"`
 	LanguageID         string            `json:"language_id"`
-	ProficiencyLevelID string            `json:"proficiency_level_id"`
-	Word               string            `json:"word"`
+	LevelID        string            `json:"level_id"`
+	WritingLevelID string            `json:"writing_level_id"`
+	Word           string            `json:"word"`
 	Phonetic           string            `json:"phonetic"`
 	AudioURL           string            `json:"audio_url"`
 	ImageURL           string            `json:"image_url"`
@@ -100,8 +103,9 @@ type VocabularyListResponse struct {
 	ID                 string                `json:"id"`
 	Word               string                `json:"word"`
 	Phonetic           string                `json:"phonetic"`
-	Meanings           []MeaningListResponse `json:"meanings"`
-	ProficiencyLevelID string                `json:"proficiency_level_id"`
+	Meanings       []MeaningListResponse `json:"meanings"`
+	LevelID        string                `json:"level_id"`
+	WritingLevelID string                `json:"writing_level_id"`
 	FrequencyRank      int                   `json:"frequency_rank"`
 }
 

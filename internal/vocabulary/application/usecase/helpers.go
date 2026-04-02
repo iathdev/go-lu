@@ -56,8 +56,8 @@ func mapVocabEntityError(err error) error {
 		return apperr.ValidationFailed("vocabulary.meaning_required")
 	case errors.Is(err, domain.ErrInvalidLanguageID):
 		return apperr.BadRequest("vocabulary.invalid_language_id")
-	case errors.Is(err, domain.ErrInvalidProficiencyLevelID):
-		return apperr.BadRequest("vocabulary.invalid_proficiency_level_id")
+	case errors.Is(err, domain.ErrInvalidLevelID):
+		return apperr.BadRequest("vocabulary.invalid_level_id")
 	default:
 		return apperr.InternalServerError("common.internal_error", err)
 	}

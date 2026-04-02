@@ -21,7 +21,7 @@ func ToGrammarPointResponse(grammarPoint *domain.GrammarPoint) vdto.GrammarPoint
 	return vdto.GrammarPointResponse{
 		ID:                 grammarPoint.ID.String(),
 		CategoryID:         grammarPoint.CategoryID.String(),
-		ProficiencyLevelID: grammarPoint.ProficiencyLevelID.String(),
+		LevelID:            grammarPoint.LevelID.String(),
 		Code:               grammarPoint.Code,
 		Pattern:            grammarPoint.Pattern,
 		Examples:           grammarPoint.Examples,

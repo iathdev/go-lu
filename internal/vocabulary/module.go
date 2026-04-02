@@ -72,7 +72,8 @@ func (module *Module) RegisterRoutes(public, protected *gin.RouterGroup) {
 	v1.DELETE("/vocabularies/:id", module.handler.DeleteVocabulary)
 
 	// Group 2: OCR + Import
-	v1.POST("/vocabularies/ocr-scan", middleware.TimeoutMiddleware(60*time.Second), module.handler.ProcessOCRScan)
+	publicV1.POST("/vocabularies/ocr-scan", middleware.TimeoutMiddleware(60*time.Second), module.handler.ProcessOCRScan)
+	publicV1.POST("/vocabularies/ocr-extract-text", middleware.TimeoutMiddleware(60*time.Second), module.handler.ExtractText)
 	v1.POST("/admin/vocabularies/import", module.handler.ImportVocabularies)
 
 	// Group 3: Classification (Public read, Protected write)

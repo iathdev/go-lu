@@ -8,3 +8,6 @@ pypinyin
 urllib3<2
 pytesseract
 Pillow
+python-multipart
+google-auth
+google-cloud-vision

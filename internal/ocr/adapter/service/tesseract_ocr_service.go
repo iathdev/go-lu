@@ -32,3 +32,13 @@ func (service *TesseractOCRService) Recognize(ctx context.Context, req port.OCRR
 	}
 	return result.(*port.OCRResult), nil
 }
+
+func (service *TesseractOCRService) ExtractText(ctx context.Context, req port.OCRRequest) (*port.OCRTextResult, error) {
+	result, err := service.breaker.Execute(func() (any, error) {
+		return callSelfHostedExtractText(ctx, service.client, service.baseURL, "tesseract", req)
+	})
+	if err != nil {
+		return nil, err
+	}
+	return result.(*port.OCRTextResult), nil
+}

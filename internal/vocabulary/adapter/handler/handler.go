@@ -323,6 +323,65 @@ func (handler *VocabularyHandler) ProcessOCRScan(ctx *gin.Context) {
 	response.Success(ctx, http.StatusOK, result)
 }
 
+func (handler *VocabularyHandler) ExtractText(ctx *gin.Context) {
+	const maxImageSize = 10 << 20 // 10MB
+
+	var httpReq vdto.OCRScanHTTPRequest
+	if err := ctx.ShouldBind(&httpReq); err != nil {
+		response.ValidationError(ctx, err)
+		return
+	}
+
+	file, header, err := ctx.Request.FormFile("image")
+	if err != nil {
+		response.BadRequest(ctx, "vocabulary.ocr_image_required")
+		return
+	}
+	defer file.Close()
+
+	if header.Size > maxImageSize {
+		response.BadRequest(ctx, "vocabulary.ocr_image_too_large")
+		return
+	}
+
+	imageBytes, err := io.ReadAll(io.LimitReader(file, maxImageSize+1))
+	if err != nil {
+		response.BadRequest(ctx, "vocabulary.ocr_image_read_failed")
+		return
+	}
+
+	contentType := http.DetectContentType(imageBytes)
+	if !strings.HasPrefix(contentType, "image/") {
+		response.BadRequest(ctx, "vocabulary.ocr_invalid_image_type")
+		return
+	}
+
+	ocrType := httpReq.Type
+	if ocrType == "" {
+		ocrType = "auto"
+	}
+
+	language := httpReq.Language
+	if language == "" {
+		language = "zh"
+	}
+
+	req := port.OCRScanInput{
+		Image:    imageBytes,
+		Type:     ocrType,
+		Language: language,
+		Engine:   httpReq.Engine,
+	}
+
+	result, err := handler.ocrCmd.ExtractText(ctx.Request.Context(), req)
+	if err != nil {
+		response.HandleError(ctx, err)
+		return
+	}
+
+	response.Success(ctx, http.StatusOK, result)
+}
+
 // --- Group 3: Classification ---
 
 func (handler *VocabularyHandler) ListTopics(c *gin.Context) {
@@ -349,7 +408,7 @@ func (handler *VocabularyHandler) GetTopic(c *gin.Context) {
 
 func (handler *VocabularyHandler) ListGrammarPoints(c *gin.Context) {
 	categoryID := c.Query("category_id")
-	proficiencyLevelID := c.Query("proficiency_level_id")
+	proficiencyLevelID := c.Query("level_id")
 
 	var pagination dto.PaginationRequest
 	if err := c.ShouldBindQuery(&pagination); err != nil {

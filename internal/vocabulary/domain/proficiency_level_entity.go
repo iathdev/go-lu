@@ -4,7 +4,7 @@ import "time"
 
 // ProficiencyLevel represents a level within a proficiency category (e.g. HSK 1, JLPT N5).
 type ProficiencyLevel struct {
-	ID            ProficiencyLevelID
+	ID            LevelID
 	CategoryID    CategoryID
 	PrepLevelID   *int
 	Code          string

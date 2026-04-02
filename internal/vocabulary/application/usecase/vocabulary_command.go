@@ -25,7 +25,7 @@ func NewVocabularyCommand(
 }
 
 func (useCase *VocabularyCommand) CreateVocabulary(ctx context.Context, req vdto.CreateVocabularyRequest) (*vdto.VocabularyResponse, error) {
-	params, err := mapper.ToVocabularyParams(req.LanguageID, req.ProficiencyLevelID, req.Word, req.Phonetic, req.AudioURL, req.ImageURL, req.FrequencyRank, req.Metadata, req.Meanings)
+	params, err := mapper.ToVocabularyParams(req.LanguageID, req.LevelID, req.WritingLevelID, req.Word, req.Phonetic, req.AudioURL, req.ImageURL, req.FrequencyRank, req.Metadata, req.Meanings)
 	if err != nil {
 		return nil, mapVocabEntityError(err)
 	}
@@ -57,7 +57,7 @@ func (useCase *VocabularyCommand) UpdateVocabulary(ctx context.Context, id strin
 		return nil, apperr.NotFound("vocabulary.not_found")
 	}
 
-	params, err := mapper.ToVocabularyParams(req.LanguageID, req.ProficiencyLevelID, req.Word, req.Phonetic, req.AudioURL, req.ImageURL, req.FrequencyRank, req.Metadata, req.Meanings)
+	params, err := mapper.ToVocabularyParams(req.LanguageID, req.LevelID, req.WritingLevelID, req.Word, req.Phonetic, req.AudioURL, req.ImageURL, req.FrequencyRank, req.Metadata, req.Meanings)
 	if err != nil {
 		return nil, mapVocabEntityError(err)
 	}

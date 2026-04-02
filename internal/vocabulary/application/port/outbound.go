@@ -17,7 +17,7 @@ type CategoryRepositoryPort interface {
 
 type ProficiencyLevelRepositoryPort interface {
 	FindAll(ctx context.Context, categoryID *domain.CategoryID) ([]*domain.ProficiencyLevel, error)
-	FindByID(ctx context.Context, id domain.ProficiencyLevelID) (*domain.ProficiencyLevel, error)
+	FindByID(ctx context.Context, id domain.LevelID) (*domain.ProficiencyLevel, error)
 }
 
 type VocabularyRepositoryPort interface {
@@ -25,8 +25,8 @@ type VocabularyRepositoryPort interface {
 	FindByID(ctx context.Context, id domain.VocabularyID) (*domain.Vocabulary, error)
 	FindByWord(ctx context.Context, languageID domain.LanguageID, word string) (*domain.Vocabulary, error)
 	FindByWordList(ctx context.Context, languageID domain.LanguageID, words []string) ([]*domain.Vocabulary, error)
-	FindAll(ctx context.Context, languageID *domain.LanguageID, profLevelID *domain.ProficiencyLevelID, topicID *domain.TopicID, offset, limit int) ([]*domain.Vocabulary, error)
-	CountAll(ctx context.Context, languageID *domain.LanguageID, profLevelID *domain.ProficiencyLevelID, topicID *domain.TopicID) (int64, error)
+	FindAll(ctx context.Context, languageID *domain.LanguageID, profLevelID *domain.LevelID, topicID *domain.TopicID, offset, limit int) ([]*domain.Vocabulary, error)
+	CountAll(ctx context.Context, languageID *domain.LanguageID, profLevelID *domain.LevelID, topicID *domain.TopicID) (int64, error)
 	Search(ctx context.Context, query string, languageID *domain.LanguageID, offset, limit int) ([]*domain.Vocabulary, error)
 	CountSearch(ctx context.Context, query string, languageID *domain.LanguageID) (int64, error)
 	Update(ctx context.Context, vocab *domain.Vocabulary) error
@@ -57,8 +57,8 @@ type TopicRepositoryPort interface {
 }
 
 type GrammarPointRepositoryPort interface {
-	FindAll(ctx context.Context, categoryID *domain.CategoryID, profLevelID *domain.ProficiencyLevelID, offset, limit int) ([]*domain.GrammarPoint, error)
-	CountAll(ctx context.Context, categoryID *domain.CategoryID, profLevelID *domain.ProficiencyLevelID) (int64, error)
+	FindAll(ctx context.Context, categoryID *domain.CategoryID, profLevelID *domain.LevelID, offset, limit int) ([]*domain.GrammarPoint, error)
+	CountAll(ctx context.Context, categoryID *domain.CategoryID, profLevelID *domain.LevelID) (int64, error)
 	FindByID(ctx context.Context, id domain.GrammarPointID) (*domain.GrammarPoint, error)
 	FindByIDs(ctx context.Context, ids []domain.GrammarPointID) ([]*domain.GrammarPoint, error)
 	FindByVocabularyID(ctx context.Context, vocabID domain.VocabularyID) ([]*domain.GrammarPoint, error)
@@ -66,6 +66,7 @@ type GrammarPointRepositoryPort interface {
 
 type OCRScannerPort interface {
 	ProcessScan(ctx context.Context, req OCRScanInput) (*OCRScanOutput, error)
+	ExtractText(ctx context.Context, req OCRScanInput) (*OCRExtractTextOutput, error)
 }
 
 type OCRScanInput struct {
@@ -83,9 +84,37 @@ type OCRScanOutput struct {
 	ProcessingMs  int64                `json:"processing_ms"`
 }
 
+type OCRExtractTextOutput struct {
+	Blocks   []OCRTextBlockOutput `json:"blocks"`
+	FullText string               `json:"full_text"`
+	Metadata OCRExtractTextMeta   `json:"metadata"`
+}
+
+type OCRTextBlockOutput struct {
+	Text        string             `json:"text"`
+	BoundingBox *BoundingBoxOutput `json:"bounding_box,omitempty"`
+	Confidence  float64            `json:"confidence"`
+}
+
+type OCRExtractTextMeta struct {
+	EngineUsed       string `json:"engine_used"`
+	TotalBlocks      int    `json:"total_blocks"`
+	ProcessingTimeMs int64  `json:"processing_time_ms"`
+}
+
+type BoundingBoxOutput struct {
+	Vertices []PointOutput `json:"vertices"`
+}
+
+type PointOutput struct {
+	X int `json:"x"`
+	Y int `json:"y"`
+}
+
 type OCRCharacterOutput struct {
-	Text          string   `json:"text"`
-	Pronunciation string   `json:"pronunciation,omitempty"`
-	Confidence    float64  `json:"confidence"`
-	Candidates    []string `json:"candidates,omitempty"`
+	Text          string            `json:"text"`
+	Pronunciation string            `json:"pronunciation,omitempty"`
+	Confidence    float64           `json:"confidence"`
+	Candidates    []string          `json:"candidates,omitempty"`
+	BoundingBox   *BoundingBoxOutput `json:"bounding_box,omitempty"`
 }

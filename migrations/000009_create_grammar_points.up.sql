@@ -1,7 +1,7 @@
 CREATE TABLE grammar_points (
     id                   UUID PRIMARY KEY,
     category_id          UUID NOT NULL,
-    proficiency_level_id UUID,
+    level_id             UUID,
     code                 VARCHAR(50) NOT NULL,
     pattern              VARCHAR(255) NOT NULL,
     examples             JSONB DEFAULT '{}'::jsonb,
@@ -13,4 +13,4 @@ CREATE TABLE grammar_points (
 );
 
 CREATE INDEX idx_gp_category ON grammar_points(category_id);
-CREATE INDEX idx_gp_proficiency ON grammar_points(proficiency_level_id);
+CREATE INDEX idx_gp_level ON grammar_points(level_id);

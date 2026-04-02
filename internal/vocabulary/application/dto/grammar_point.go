@@ -3,7 +3,7 @@ package dto
 type GrammarPointResponse struct {
 	ID                 string         `json:"id"`
 	CategoryID         string         `json:"category_id"`
-	ProficiencyLevelID string         `json:"proficiency_level_id"`
+	LevelID string         `json:"level_id"`
 	Code               string         `json:"code"`
 	Pattern            string         `json:"pattern"`
 	Examples           map[string]any `json:"examples"`

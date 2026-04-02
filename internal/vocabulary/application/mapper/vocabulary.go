@@ -10,7 +10,7 @@ import (
 
 // ToVocabularyParams parses DTO fields into typed domain VocabularyParams.
 func ToVocabularyParams(
-	languageID, proficiencyLevelID, word, phonetic, audioURL, imageURL string,
+	languageID, levelID, writingLevelID, word, phonetic, audioURL, imageURL string,
 	frequencyRank int,
 	metadata map[string]any,
 	meanings []vdto.MeaningDTO,
@@ -20,11 +20,19 @@ func ToVocabularyParams(
 		return domain.VocabularyParams{}, domain.ErrInvalidLanguageID
 	}
 
-	var plID domain.ProficiencyLevelID
-	if proficiencyLevelID != "" {
-		plID, err = domain.ParseProficiencyLevelID(proficiencyLevelID)
+	var lvlID domain.LevelID
+	if levelID != "" {
+		lvlID, err = domain.ParseLevelID(levelID)
 		if err != nil {
-			return domain.VocabularyParams{}, domain.ErrInvalidProficiencyLevelID
+			return domain.VocabularyParams{}, domain.ErrInvalidLevelID
+		}
+	}
+
+	var wLvlID domain.LevelID
+	if writingLevelID != "" {
+		wLvlID, err = domain.ParseLevelID(writingLevelID)
+		if err != nil {
+			return domain.VocabularyParams{}, domain.ErrInvalidLevelID
 		}
 	}
 
@@ -55,8 +63,9 @@ func ToVocabularyParams(
 	}
 
 	return domain.VocabularyParams{
-		LanguageID:         langID,
-		ProficiencyLevelID: plID,
+		LanguageID:     langID,
+		LevelID:        lvlID,
+		WritingLevelID: wLvlID,
 		Word:               word,
 		Phonetic:           phonetic,
 		AudioURL:           audioURL,
@@ -120,9 +129,10 @@ func ToVocabularyResponse(vocab *domain.Vocabulary) *vdto.VocabularyResponse {
 	}
 
 	return &vdto.VocabularyResponse{
-		ID:                 vocab.ID.String(),
-		LanguageID:         vocab.LanguageID.String(),
-		ProficiencyLevelID: vocab.ProficiencyLevelID.String(),
+		ID:             vocab.ID.String(),
+		LanguageID:     vocab.LanguageID.String(),
+		LevelID:        vocab.LevelID.String(),
+		WritingLevelID: vocab.WritingLevelID.String(),
 		Word:               vocab.Word,
 		Phonetic:           vocab.Phonetic,
 		AudioURL:           vocab.AudioURL,
@@ -150,8 +160,9 @@ func ToVocabularyListResponse(vocab *domain.Vocabulary) *vdto.VocabularyListResp
 		Word:               vocab.Word,
 		Phonetic:           vocab.Phonetic,
 		Meanings:           meanings,
-		ProficiencyLevelID: vocab.ProficiencyLevelID.String(),
-		FrequencyRank:      vocab.FrequencyRank,
+		LevelID:        vocab.LevelID.String(),
+		WritingLevelID: vocab.WritingLevelID.String(),
+		FrequencyRank:  vocab.FrequencyRank,
 	}
 }
 

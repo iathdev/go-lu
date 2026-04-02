@@ -18,13 +18,13 @@ func NewGrammarPointRepository(db *gorm.DB) port.GrammarPointRepositoryPort {
 	return &GrammarPointRepository{db: db}
 }
 
-func (repo *GrammarPointRepository) FindAll(ctx context.Context, categoryID *domain.CategoryID, profLevelID *domain.ProficiencyLevelID, offset, limit int) ([]*domain.GrammarPoint, error) {
+func (repo *GrammarPointRepository) FindAll(ctx context.Context, categoryID *domain.CategoryID, profLevelID *domain.LevelID, offset, limit int) ([]*domain.GrammarPoint, error) {
 	query := repo.db.WithContext(ctx)
 	if categoryID != nil {
 		query = query.Where("category_id = ?", categoryID.UUID())
 	}
 	if profLevelID != nil {
-		query = query.Where("proficiency_level_id = ?", profLevelID.UUID())
+		query = query.Where("level_id = ?", profLevelID.UUID())
 	}
 
 	var models []model.GrammarPointModel
@@ -39,13 +39,13 @@ func (repo *GrammarPointRepository) FindAll(ctx context.Context, categoryID *dom
 	return result, nil
 }
 
-func (repo *GrammarPointRepository) CountAll(ctx context.Context, categoryID *domain.CategoryID, profLevelID *domain.ProficiencyLevelID) (int64, error) {
+func (repo *GrammarPointRepository) CountAll(ctx context.Context, categoryID *domain.CategoryID, profLevelID *domain.LevelID) (int64, error) {
 	query := repo.db.WithContext(ctx).Model(&model.GrammarPointModel{})
 	if categoryID != nil {
 		query = query.Where("category_id = ?", categoryID.UUID())
 	}
 	if profLevelID != nil {
-		query = query.Where("proficiency_level_id = ?", profLevelID.UUID())
+		query = query.Where("level_id = ?", profLevelID.UUID())
 	}
 
 	var count int64

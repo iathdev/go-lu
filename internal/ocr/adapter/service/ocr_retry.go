@@ -62,6 +62,41 @@ func (decorator *OCRRetryDecorator) Recognize(ctx context.Context, req port.OCRR
 	return nil, lastErr
 }
 
+func (decorator *OCRRetryDecorator) ExtractText(ctx context.Context, req port.OCRRequest) (*port.OCRTextResult, error) {
+	var lastErr error
+	for attempt := range decorator.maxRetries {
+		result, err := decorator.inner.ExtractText(ctx, req)
+		if err == nil {
+			return result, nil
+		}
+
+		lastErr = err
+
+		if !isRetryable(err) || attempt == decorator.maxRetries-1 {
+			break
+		}
+
+		backoff := decorator.baseDelay * time.Duration(1<<attempt)
+		if backoff > maxBackoff {
+			backoff = maxBackoff
+		}
+
+		logger.Warn(ctx, "[OCR] retrying extract-text",
+			zap.Int("attempt", attempt+1),
+			zap.Int("max", decorator.maxRetries),
+			zap.Duration("backoff", backoff),
+			zap.Error(err),
+		)
+
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-time.After(backoff):
+		}
+	}
+	return nil, lastErr
+}
+
 func isRetryable(err error) bool {
 	appErr, ok := apperr.IsAppError(err)
 	if !ok {

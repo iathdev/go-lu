@@ -100,7 +100,7 @@ func (repo *VocabularyRepository) FindByWordList(ctx context.Context, languageID
 }
 
 // FindAll lists vocabularies with optional filters, returning lightweight entities (no meanings).
-func (repo *VocabularyRepository) FindAll(ctx context.Context, languageID *domain.LanguageID, profLevelID *domain.ProficiencyLevelID, topicID *domain.TopicID, offset, limit int) ([]*domain.Vocabulary, error) {
+func (repo *VocabularyRepository) FindAll(ctx context.Context, languageID *domain.LanguageID, profLevelID *domain.LevelID, topicID *domain.TopicID, offset, limit int) ([]*domain.Vocabulary, error) {
 	query := repo.db.WithContext(ctx).Model(&model.VocabularyModel{})
 	query = applyVocabFilters(query, languageID, profLevelID, topicID)
 
@@ -117,7 +117,7 @@ func (repo *VocabularyRepository) FindAll(ctx context.Context, languageID *domai
 }
 
 // CountAll counts vocabularies matching the given filters.
-func (repo *VocabularyRepository) CountAll(ctx context.Context, languageID *domain.LanguageID, profLevelID *domain.ProficiencyLevelID, topicID *domain.TopicID) (int64, error) {
+func (repo *VocabularyRepository) CountAll(ctx context.Context, languageID *domain.LanguageID, profLevelID *domain.LevelID, topicID *domain.TopicID) (int64, error) {
 	query := repo.db.WithContext(ctx).Model(&model.VocabularyModel{})
 	query = applyVocabFilters(query, languageID, profLevelID, topicID)
 
@@ -415,12 +415,12 @@ func (repo *VocabularyRepository) loadMeaningsWithExamples(ctx context.Context, 
 }
 
 // applyVocabFilters adds optional WHERE clauses for vocabulary list queries.
-func applyVocabFilters(query *gorm.DB, languageID *domain.LanguageID, profLevelID *domain.ProficiencyLevelID, topicID *domain.TopicID) *gorm.DB {
+func applyVocabFilters(query *gorm.DB, languageID *domain.LanguageID, profLevelID *domain.LevelID, topicID *domain.TopicID) *gorm.DB {
 	if languageID != nil {
 		query = query.Where("vocabularies.language_id = ?", languageID.UUID())
 	}
 	if profLevelID != nil {
-		query = query.Where("vocabularies.proficiency_level_id = ?", profLevelID.UUID())
+		query = query.Where("vocabularies.level_id = ?", profLevelID.UUID())
 	}
 	if topicID != nil {
 		query = query.Joins("JOIN vocabulary_topics vt ON vt.vocabulary_id = vocabularies.id").

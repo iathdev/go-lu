@@ -109,11 +109,11 @@ func (useCase *VocabularyQuery) ListVocabularies(ctx context.Context, filter vdt
 		langIDPtr = &parsed
 	}
 
-	var profLevelIDPtr *domain.ProficiencyLevelID
-	if filter.ProficiencyLevelID != "" {
-		parsed, err := domain.ParseProficiencyLevelID(filter.ProficiencyLevelID)
+	var profLevelIDPtr *domain.LevelID
+	if filter.LevelID != "" {
+		parsed, err := domain.ParseLevelID(filter.LevelID)
 		if err != nil {
-			return nil, apperr.BadRequest("vocabulary.invalid_proficiency_level_id")
+			return nil, apperr.BadRequest("vocabulary.invalid_level_id")
 		}
 		profLevelIDPtr = &parsed
 	}

@@ -24,7 +24,7 @@ func (ProficiencyLevelModel) TableName() string { return "proficiency_levels" }
 
 func (model *ProficiencyLevelModel) ToEntity() *domain.ProficiencyLevel {
 	return &domain.ProficiencyLevel{
-		ID:            domain.ProficiencyLevelIDFromUUID(model.ID),
+		ID:            domain.LevelIDFromUUID(model.ID),
 		CategoryID:    domain.CategoryIDFromUUID(model.CategoryID),
 		PrepLevelID:   model.PrepLevelID,
 		Code:          model.Code,

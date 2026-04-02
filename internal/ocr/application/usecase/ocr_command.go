@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"go.uber.org/zap"
@@ -95,6 +96,7 @@ func (useCase *OCRCommand) classifyByConfidence(characters []port.OCRCharacter) 
 			Pronunciation: char.Pronunciation,
 			Confidence:    char.Confidence,
 			Candidates:    char.Candidates,
+			BoundingBox:   mapBoundingBox(char.BoundingBox),
 		}
 		if char.Confidence < ocrConfidenceLowThreshold {
 			lowConfidence = append(lowConfidence, item)
@@ -103,6 +105,65 @@ func (useCase *OCRCommand) classifyByConfidence(characters []port.OCRCharacter) 
 		}
 	}
 	return items, lowConfidence
+}
+
+func (useCase *OCRCommand) ExtractText(ctx context.Context, req dto.OCRExtractTextRequest) (*dto.OCRExtractTextResponse, error) {
+	start := time.Now()
+
+	engine, _ := useCase.resolveEngine(req.Type, req.Language, req.Engine)
+	if engine == nil {
+		return nil, apperr.ServiceUnavailable("ocr.no_engine_available", nil)
+	}
+
+	textResult, err := engine.ExtractText(ctx, port.OCRRequest{Image: req.Image, Language: req.Language})
+	if err != nil {
+		if _, ok := apperr.IsAppError(err); ok {
+			return nil, err
+		}
+		return nil, apperr.ServiceUnavailable("ocr.recognize_failed", err)
+	}
+
+	blocks := make([]dto.OCRTextBlockItem, 0, len(textResult.Blocks))
+	var fullTextParts []string
+	for _, block := range textResult.Blocks {
+		blocks = append(blocks, dto.OCRTextBlockItem{
+			Text:        block.Text,
+			BoundingBox: mapBoundingBox(block.BoundingBox),
+			Confidence:  block.Confidence,
+		})
+		fullTextParts = append(fullTextParts, block.Text)
+	}
+
+	fullText := strings.Join(fullTextParts, "\n")
+
+	resp := &dto.OCRExtractTextResponse{
+		Blocks:   blocks,
+		FullText: fullText,
+		Metadata: dto.OCRExtractTextMetadata{
+			EngineUsed:       textResult.Engine,
+			TotalBlocks:      len(blocks),
+			ProcessingTimeMs: time.Since(start).Milliseconds(),
+		},
+	}
+
+	logger.Info(ctx, "[OCR] text extraction completed",
+		zap.Int("blocks", len(blocks)),
+		zap.String("engine", textResult.Engine),
+		zap.Int64("processing_ms", resp.Metadata.ProcessingTimeMs),
+	)
+
+	return resp, nil
+}
+
+func mapBoundingBox(bbox *port.BoundingBox) *dto.BoundingBoxDTO {
+	if bbox == nil || len(bbox.Vertices) == 0 {
+		return nil
+	}
+	vertices := make([]dto.PointDTO, len(bbox.Vertices))
+	for i, v := range bbox.Vertices {
+		vertices[i] = dto.PointDTO{X: v.X, Y: v.Y}
+	}
+	return &dto.BoundingBoxDTO{Vertices: vertices}
 }
 
 // --- Engine routing ---

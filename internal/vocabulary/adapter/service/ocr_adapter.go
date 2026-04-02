@@ -36,6 +36,37 @@ func (adapter *OCRAdapter) ProcessScan(ctx context.Context, req vocabport.OCRSca
 	}, nil
 }
 
+func (adapter *OCRAdapter) ExtractText(ctx context.Context, req vocabport.OCRScanInput) (*vocabport.OCRExtractTextOutput, error) {
+	result, err := adapter.ocrCmd.ExtractText(ctx, ocrdto.OCRExtractTextRequest{
+		Image:    req.Image,
+		Type:     req.Type,
+		Language: req.Language,
+		Engine:   req.Engine,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	blocks := make([]vocabport.OCRTextBlockOutput, 0, len(result.Blocks))
+	for _, block := range result.Blocks {
+		blocks = append(blocks, vocabport.OCRTextBlockOutput{
+			Text:        block.Text,
+			BoundingBox: mapBoundingBoxOutput(block.BoundingBox),
+			Confidence:  block.Confidence,
+		})
+	}
+
+	return &vocabport.OCRExtractTextOutput{
+		Blocks:   blocks,
+		FullText: result.FullText,
+		Metadata: vocabport.OCRExtractTextMeta{
+			EngineUsed:       result.Metadata.EngineUsed,
+			TotalBlocks:      result.Metadata.TotalBlocks,
+			ProcessingTimeMs: result.Metadata.ProcessingTimeMs,
+		},
+	}, nil
+}
+
 func toCharacterOutputs(items []ocrdto.OCRCharacterItem) []vocabport.OCRCharacterOutput {
 	outputs := make([]vocabport.OCRCharacterOutput, 0, len(items))
 	for _, item := range items {
@@ -44,7 +75,19 @@ func toCharacterOutputs(items []ocrdto.OCRCharacterItem) []vocabport.OCRCharacte
 			Pronunciation: item.Pronunciation,
 			Confidence:    item.Confidence,
 			Candidates:    item.Candidates,
+			BoundingBox:   mapBoundingBoxOutput(item.BoundingBox),
 		})
 	}
 	return outputs
+}
+
+func mapBoundingBoxOutput(bbox *ocrdto.BoundingBoxDTO) *vocabport.BoundingBoxOutput {
+	if bbox == nil || len(bbox.Vertices) == 0 {
+		return nil
+	}
+	vertices := make([]vocabport.PointOutput, len(bbox.Vertices))
+	for i, v := range bbox.Vertices {
+		vertices[i] = vocabport.PointOutput{X: v.X, Y: v.Y}
+	}
+	return &vocabport.BoundingBoxOutput{Vertices: vertices}
 }

@@ -32,11 +32,11 @@ func (useCase *GrammarPointQuery) ListGrammarPoints(ctx context.Context, categor
 		catIDPtr = &parsed
 	}
 
-	var profLevelIDPtr *domain.ProficiencyLevelID
+	var profLevelIDPtr *domain.LevelID
 	if proficiencyLevelID != "" {
-		parsed, err := domain.ParseProficiencyLevelID(proficiencyLevelID)
+		parsed, err := domain.ParseLevelID(proficiencyLevelID)
 		if err != nil {
-			return nil, apperr.BadRequest("grammar_point.invalid_proficiency_level_id")
+			return nil, apperr.BadRequest("grammar_point.invalid_level_id")
 		}
 		profLevelIDPtr = &parsed
 	}

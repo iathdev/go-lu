@@ -100,8 +100,9 @@ func extractChinese(paragraph *visionpb.Paragraph, seen map[string]struct{}, cha
 		}
 		seen[wordText] = struct{}{}
 		characters = append(characters, port.OCRCharacter{
-			Text:       wordText,
-			Confidence: float64(word.GetConfidence()),
+			Text:        wordText,
+			Confidence:  float64(word.GetConfidence()),
+			BoundingBox: extractBoundingBox(word.GetBoundingBox()),
 		})
 	}
 	return characters
@@ -126,8 +127,9 @@ func extractWordsWithLang(paragraph *visionpb.Paragraph, requestedLang string, s
 		}
 		seen[wordText] = struct{}{}
 		characters = append(characters, port.OCRCharacter{
-			Text:       wordText,
-			Confidence: float64(word.GetConfidence()),
+			Text:        wordText,
+			Confidence:  float64(word.GetConfidence()),
+			BoundingBox: extractBoundingBox(word.GetBoundingBox()),
 		})
 	}
 	return characters
@@ -162,6 +164,76 @@ func isCJKLanguage(language string) bool {
 	default:
 		return false
 	}
+}
+
+func (svc *GoogleVisionService) ExtractText(ctx context.Context, req port.OCRRequest) (*port.OCRTextResult, error) {
+	result, err := svc.breaker.Execute(func() (any, error) {
+		resp, err := svc.client.BatchAnnotateImages(ctx, &visionpb.BatchAnnotateImagesRequest{
+			Requests: []*visionpb.AnnotateImageRequest{
+				{
+					Image:    &visionpb.Image{Content: req.Image},
+					Features: []*visionpb.Feature{{Type: visionpb.Feature_DOCUMENT_TEXT_DETECTION}},
+				},
+			},
+		})
+		if err != nil {
+			logger.WithContext(ctx).Error("[OCR] Google Vision API error", zap.Error(err))
+			return nil, apperr.ServiceUnavailable("ocr.service_error", err)
+		}
+
+		responses := resp.GetResponses()
+		if len(responses) == 0 || responses[0].GetFullTextAnnotation() == nil {
+			return &port.OCRTextResult{Blocks: []port.OCRTextBlock{}, Engine: string(port.OCREngineGoogleVision)}, nil
+		}
+
+		annotation := responses[0].GetFullTextAnnotation()
+		blocks := extractTextBlocks(annotation)
+
+		return &port.OCRTextResult{Blocks: blocks, Engine: string(port.OCREngineGoogleVision)}, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return result.(*port.OCRTextResult), nil
+}
+
+func extractTextBlocks(annotation *visionpb.TextAnnotation) []port.OCRTextBlock {
+	var blocks []port.OCRTextBlock
+	for _, page := range annotation.GetPages() {
+		for _, block := range page.GetBlocks() {
+			for _, paragraph := range block.GetParagraphs() {
+				var text string
+				for _, word := range paragraph.GetWords() {
+					if text != "" {
+						text += " "
+					}
+					for _, symbol := range word.GetSymbols() {
+						text += symbol.GetText()
+					}
+				}
+				if text == "" {
+					continue
+				}
+				blocks = append(blocks, port.OCRTextBlock{
+					Text:        text,
+					BoundingBox: extractBoundingBox(paragraph.GetBoundingBox()),
+					Confidence:  float64(paragraph.GetConfidence()),
+				})
+			}
+		}
+	}
+	return blocks
+}
+
+func extractBoundingBox(poly *visionpb.BoundingPoly) *port.BoundingBox {
+	if poly == nil || len(poly.GetVertices()) == 0 {
+		return nil
+	}
+	vertices := make([]port.Point, len(poly.GetVertices()))
+	for i, v := range poly.GetVertices() {
+		vertices[i] = port.Point{X: int(v.GetX()), Y: int(v.GetY())}
+	}
+	return &port.BoundingBox{Vertices: vertices}
 }
 
 func isCJK(text string) bool {

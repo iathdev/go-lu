@@ -13,7 +13,7 @@ type GenericJSON = common.JSONB[map[string]any]
 type GrammarPointModel struct {
 	ID                 uuid.UUID   `gorm:"type:uuid;primary_key"`
 	CategoryID         uuid.UUID   `gorm:"type:uuid;not null"`
-	ProficiencyLevelID uuid.UUID   `gorm:"type:uuid"`
+	LevelID uuid.UUID   `gorm:"column:level_id;type:uuid"`
 	Code               string      `gorm:"not null"`
 	Pattern            string      `gorm:"not null"`
 	Examples           GenericJSON `gorm:"type:jsonb;default:'{}'"`
@@ -44,7 +44,7 @@ func (model *GrammarPointModel) ToEntity() *domain.GrammarPoint {
 	return &domain.GrammarPoint{
 		ID:                 domain.GrammarPointIDFromUUID(model.ID),
 		CategoryID:         domain.CategoryIDFromUUID(model.CategoryID),
-		ProficiencyLevelID: domain.ProficiencyLevelIDFromUUID(model.ProficiencyLevelID),
+		LevelID: domain.LevelIDFromUUID(model.LevelID),
 		Code:               model.Code,
 		Pattern:            model.Pattern,
 		Examples:           examples,
@@ -59,7 +59,7 @@ func FromGrammarPointEntity(gp *domain.GrammarPoint) *GrammarPointModel {
 	return &GrammarPointModel{
 		ID:                 gp.ID.UUID(),
 		CategoryID:         gp.CategoryID.UUID(),
-		ProficiencyLevelID: gp.ProficiencyLevelID.UUID(),
+		LevelID: gp.LevelID.UUID(),
 		Code:               gp.Code,
 		Pattern:            gp.Pattern,
 		Examples:           common.NewJSONB(gp.Examples),

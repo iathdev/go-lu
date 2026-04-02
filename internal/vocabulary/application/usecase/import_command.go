@@ -72,7 +72,7 @@ func (useCase *ImportCommand) ImportVocabularies(ctx context.Context, req vdto.B
 			}
 
 			params, parseErr := mapper.ToVocabularyParams(
-				item.LanguageID, item.ProficiencyLevelID, item.Word,
+				item.LanguageID, item.LevelID, item.WritingLevelID, item.Word,
 				item.Phonetic, item.AudioURL, item.ImageURL,
 				item.FrequencyRank, item.Metadata, item.Meanings,
 			)

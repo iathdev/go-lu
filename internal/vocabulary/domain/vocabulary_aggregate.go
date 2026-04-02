@@ -6,10 +6,11 @@ import "time"
 // Language-agnostic: uses generic field names (word, phonetic).
 // Language-specific data goes into Metadata JSONB.
 type Vocabulary struct {
-	ID                 VocabularyID
-	LanguageID         LanguageID
-	ProficiencyLevelID ProficiencyLevelID
-	Word               string
+	ID             VocabularyID
+	LanguageID     LanguageID
+	LevelID        LevelID
+	WritingLevelID LevelID
+	Word           string
 	Phonetic           string
 	AudioURL           string
 	ImageURL           string
@@ -52,14 +53,15 @@ type VocabularyExample struct {
 // VocabularyParams carries typed input for creating or updating a Vocabulary.
 type VocabularyParams struct {
 	LanguageID         LanguageID
-	ProficiencyLevelID ProficiencyLevelID
-	Word               string
-	Phonetic           string
-	AudioURL           string
-	ImageURL           string
-	FrequencyRank      int
-	Metadata           map[string]any
-	Meanings           []MeaningParams
+	LevelID        LevelID
+	WritingLevelID LevelID
+	Word           string
+	Phonetic       string
+	AudioURL       string
+	ImageURL       string
+	FrequencyRank  int
+	Metadata       map[string]any
+	Meanings       []MeaningParams
 }
 
 // MeaningParams carries typed input for a meaning.
@@ -91,16 +93,17 @@ func NewVocabularyFromParams(params VocabularyParams) (*Vocabulary, error) {
 	meanings := buildMeanings(vocabID, params.Meanings)
 
 	return &Vocabulary{
-		ID:                 vocabID,
-		LanguageID:         params.LanguageID,
-		ProficiencyLevelID: params.ProficiencyLevelID,
-		Word:               params.Word,
-		Phonetic:           params.Phonetic,
-		AudioURL:           params.AudioURL,
-		ImageURL:           params.ImageURL,
-		FrequencyRank:      params.FrequencyRank,
-		Metadata:           params.Metadata,
-		Meanings:           meanings,
+		ID:             vocabID,
+		LanguageID:     params.LanguageID,
+		LevelID:        params.LevelID,
+		WritingLevelID: params.WritingLevelID,
+		Word:           params.Word,
+		Phonetic:       params.Phonetic,
+		AudioURL:       params.AudioURL,
+		ImageURL:       params.ImageURL,
+		FrequencyRank:  params.FrequencyRank,
+		Metadata:       params.Metadata,
+		Meanings:       meanings,
 	}, nil
 }
 
@@ -113,7 +116,8 @@ func (vocab *Vocabulary) Update(params VocabularyParams) error {
 	}
 
 	vocab.LanguageID = params.LanguageID
-	vocab.ProficiencyLevelID = params.ProficiencyLevelID
+	vocab.LevelID = params.LevelID
+	vocab.WritingLevelID = params.WritingLevelID
 	vocab.Word = params.Word
 	vocab.Phonetic = params.Phonetic
 	vocab.AudioURL = params.AudioURL

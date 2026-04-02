@@ -36,7 +36,7 @@ func (repo *ProficiencyLevelRepository) FindAll(ctx context.Context, categoryID 
 	return result, nil
 }
 
-func (repo *ProficiencyLevelRepository) FindByID(ctx context.Context, id domain.ProficiencyLevelID) (*domain.ProficiencyLevel, error) {
+func (repo *ProficiencyLevelRepository) FindByID(ctx context.Context, id domain.LevelID) (*domain.ProficiencyLevel, error) {
 	var m model.ProficiencyLevelModel
 	if err := repo.db.WithContext(ctx).First(&m, "id = ?", id.UUID()).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
