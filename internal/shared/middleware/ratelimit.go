@@ -6,7 +6,6 @@ import (
 	"learning-go/internal/shared/common"
 	"learning-go/internal/shared/logger"
 	"learning-go/internal/shared/response"
-
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -120,10 +119,14 @@ func GlobalRateLimitMiddleware(redisClient *redis.Client, requestsPerSecond floa
 }
 
 // RateLimitMiddleware applies per-route per-IP rate limiting.
-// Key: ratelimit:{route}::{ip}
-// Route path is auto-detected from Gin context.
-func RateLimitMiddleware(redisClient *redis.Client, requestsPerSecond float64, burst int) gin.HandlerFunc {
-	limiter := NewRateLimiter(redisClient, requestsPerSecond, burst)
+// Key: rate_limit:{route}::{ip}
+func RateLimitMiddleware(redisClient *redis.Client, requestsPerMinute int) gin.HandlerFunc {
+	rate := float64(requestsPerMinute) / 60
+	burst := requestsPerMinute
+	if burst < 1 {
+		burst = 1
+	}
+	limiter := NewRateLimiter(redisClient, rate, burst)
 
 	return func(c *gin.Context) {
 		ip := common.ResolveClientIP(c.Request)

@@ -45,8 +45,7 @@ func NewRouter(
 		response.MethodNotAllowed(c, "common.method_not_allowed")
 	})
 
-	// Health check
-	r.GET("/health", healthHandler(db))
+	r.GET("/health", middleware.RateLimitMiddleware(redisClient, 10), healthHandler(db))
 
 	// Public routes with rate limiting
 	public := r.Group("/api")
@@ -58,10 +57,6 @@ func NewRouter(
 
 	// Register modules
 	authModule.RegisterRoutes(public, protected)
-
-	r.NoRoute(func(c *gin.Context) {
-		response.NotFound(c, "common.route_not_found")
-	})
 
 	return r
 }

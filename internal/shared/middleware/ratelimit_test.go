@@ -125,7 +125,7 @@ func TestGlobalRateLimitMiddleware_RejectsOverBurst(t *testing.T) {
 
 func TestGlobalRateLimitMiddleware_DifferentIPsIndependent(t *testing.T) {
 	client, _ := newTestRedis(t)
-	router := setupRouter(GlobalRateLimitMiddleware(client, 1, 1))
+	router := setupRouter(GlobalRateLimitMiddleware(client, 60))
 
 	// IP 1 uses its token
 	w1 := httptest.NewRecorder()
@@ -150,7 +150,7 @@ func TestGlobalRateLimitMiddleware_DifferentIPsIndependent(t *testing.T) {
 
 func TestGlobalRateLimitMiddleware_RefillsOverTime(t *testing.T) {
 	client, mr := newTestRedis(t)
-	router := setupRouter(GlobalRateLimitMiddleware(client, 1, 1))
+	router := setupRouter(GlobalRateLimitMiddleware(client, 60))
 
 	// Exhaust bucket
 	w := httptest.NewRecorder()
@@ -183,7 +183,7 @@ func TestGlobalRateLimitMiddleware_RefillsOverTime(t *testing.T) {
 
 func TestRateLimitMiddleware_PerRouteIsolation(t *testing.T) {
 	client, _ := newTestRedis(t)
-	rateLimiter := RateLimitMiddleware(client, 1, 1)
+	rateLimiter := RateLimitMiddleware(client, 60)
 
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
@@ -214,7 +214,7 @@ func TestRateLimitMiddleware_PerRouteIsolation(t *testing.T) {
 
 func TestGlobalRateLimitMiddleware_FailOpenOnRedisDown(t *testing.T) {
 	client, mr := newTestRedis(t)
-	router := setupRouter(GlobalRateLimitMiddleware(client, 1, 1))
+	router := setupRouter(GlobalRateLimitMiddleware(client, 60))
 
 	// Stop Redis
 	mr.Close()
@@ -231,7 +231,7 @@ func TestGlobalRateLimitMiddleware_FailOpenOnRedisDown(t *testing.T) {
 
 func TestGlobalRateLimitMiddleware_TTLExpiry(t *testing.T) {
 	client, mr := newTestRedis(t)
-	router := setupRouter(GlobalRateLimitMiddleware(client, 1, 1))
+	router := setupRouter(GlobalRateLimitMiddleware(client, 60))
 
 	// Exhaust bucket
 	w := httptest.NewRecorder()
@@ -255,7 +255,7 @@ func TestGlobalRateLimitMiddleware_TTLExpiry(t *testing.T) {
 
 func TestRateLimitMiddleware_UnknownRouteHandled(t *testing.T) {
 	client, _ := newTestRedis(t)
-	rateLimiter := RateLimitMiddleware(client, 1, 1)
+	rateLimiter := RateLimitMiddleware(client, 60)
 
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
